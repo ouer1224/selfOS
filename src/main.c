@@ -50,8 +50,8 @@ int main(void) {
 #endif
 
   for (;;) {                        /* Loop: if a msg is received, transmit a msg */
-    if ((CAN0->IFLAG1 >> 4) & 1)
-//	  if(1)
+//    if ((CAN0->IFLAG1 >> 4) & 1)
+	  if(1)
 	  {  /* If CAN 0 MB 4 flag is set (received msg), read MB4 */
       FLEXCAN0_receive_msg ();      /* Read message */
       rx_msg_count++;               /* Increment receive msg counter */
@@ -60,7 +60,7 @@ int main(void) {
         PTD->PTOR |= 1<<16;         /*   toggle output port D16 (Green LED) */
         rx_msg_count = 0;           /*   and reset message counter */
       }
-//      Dlyms(1000);
+      Dlyms(1000);
       FLEXCAN0_transmit_msg ();     /* Transmit message using MB0 */
     }
   }

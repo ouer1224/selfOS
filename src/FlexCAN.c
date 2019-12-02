@@ -45,7 +45,7 @@ void FLEXCAN0_init(void) {
   CAN0->RAMn[ 4*MSG_BUF_SIZE + 0] = 0x04000000; /* Msg Buf 4, word 0: Enable for reception */
                                                 /* EDL,BRS,ESI=0: CANFD not used */
                                                 /* CODE=4: MB set to RX inactive */
-                                                /* IDE=CAN0->IMASK1 =0: Standard ID */
+                                                /* IDE=0: Standard ID */
                                                 /* SRR, RTR, TIME STAMP = 0: not applicable */
 #ifdef NODE_A                                   /* Node A receives msg with std ID 0x511 */
   CAN0->RAMn[ 4*MSG_BUF_SIZE + 1] = 0x14440000; /* Msg Buf 4, word 1: Standard ID = 0x111 */
@@ -53,6 +53,11 @@ void FLEXCAN0_init(void) {
   CAN0->RAMn[ 4*MSG_BUF_SIZE + 1] = 0x15540000; /* Msg Buf 4, word 1: Standard ID = 0x555 */
 #endif
                                                 /* PRIO = 0: CANFD not used */
+
+
+  CAN0->IMASK1 = (0x01<<4);//将BM4的接收设置为接收中断.
+
+
   CAN0->MCR = 0x0000001F;       /* Negate FlexCAN 1 halt state for 32 MBs */
   while ((CAN0->MCR && CAN_MCR_FRZACK_MASK) >> CAN_MCR_FRZACK_SHIFT)  {}
                  /* Good practice: wait for FRZACK to clear (not in freeze mode) */
@@ -77,7 +82,7 @@ void FLEXCAN0_transmit_msg(void) { /* Assumption:  Message buffer CODE is INACTI
                                                 /* RTR = 0: data, not remote tx request frame*/
                                                 /* DLC = 8 bytes */
 
-  while((CAN0->RAMn[ 0*MSG_BUF_SIZE + 0])&(0x0c<<24)!=0);
+//  while(((CAN0->RAMn[ 0*MSG_BUF_SIZE + 0])&(0x0c<<24))!=0);
 
 }
 
@@ -94,5 +99,19 @@ void FLEXCAN0_receive_msg(void) {  /* Receive msg from ID 0x556 using msg buffer
   RxTIMESTAMP = (CAN0->RAMn[ 0*MSG_BUF_SIZE + 0] & 0x000FFFF);
   dummy = CAN0->TIMER;             /* Read TIMER to unlock message buffers */
   CAN0->IFLAG1 = 0x00000010;       /* Clear CAN 0 MB 4 flag without clearing others*/
+}
+
+void CAN0_ORed_0_15_MB_IRQHandler(void)
+{
+	uint8_t i, j;
+	uint32_t dummy;
+
+	while ( (CAN0->IFLAG1 & (0x1<<4)) == 0){}  //mb4
+
+	dummy =CAN0->TIMER;             				/* Read TIMER to unlock message buffers */
+
+	PTD->PTOR |= 1<<15;	//闪灯
+
+	CAN0->IFLAG1 = 0x01<<4;       			/* Clear CAN 0 MB 4 flag */
 }
 
