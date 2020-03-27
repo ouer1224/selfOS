@@ -328,12 +328,12 @@ Reset_Handler:
     mov     r12,r7
 
     /* Initialize the stack pointer */
-    ldr     r0,=__StackTop
-    mov     r13,r0
+    ldr     r0,=__StackTop	/*__StackTop是栈顶的内存位置,其不是lable,是一个具体的数值,存放在地址0的位置*/
+    mov     r13,r0	/*r13为sp栈寄存器,此处是将存储在地址0的栈顶地址放入到r13中.*/
 
 #ifndef __NO_SYSTEM_INIT
     /* Call the system init routine */
-    ldr     r0,=SystemInit
+    ldr     r0,=SystemInit	/*将systeminit函数的地址放入r0中,然后跳转过去*/
     blx     r0
 #endif
 
