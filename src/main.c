@@ -12,6 +12,38 @@
 #include "FlexCAN.h"
 #include "clocks_and_modes.h"
 
+#include <stdint.h>
+#include "task.h"
+
+
+
+#define DISABLE_INTERRUPTS() __asm volatile ("cpsid i" : : : "memory")
+#define ENABLE_INTERRUPTS() __asm volatile ("cpsie i" : : : "memory")
+
+
+
+#define TASKA_STK_SIZE 1024
+#define TASKB_STK_SIZE 1024
+static unsigned int taskA_Stk[TASKA_STK_SIZE];
+static unsigned int taskB_Stk[TASKB_STK_SIZE];
+
+
+
+static struct xtos_task_struct taskA;
+static struct xtos_task_struct taskB;
+
+void task_switch() {
+    if (gp_xtos_cur_task == &taskA)
+        gp_xtos_next_task = &taskB;
+    else
+        gp_xtos_next_task = &taskA;
+
+ //   xtos_context_switch();
+}
+
+
+
+
 void WDOG_disable (void){
   WDOG->CNT=0xD928C520; 	/* Unlock watchdog */
   WDOG->TOVAL=0x0000FFFF;	/* Maximum timeout value */
@@ -25,6 +57,11 @@ void PORT_init (void) {
   PCC->PCCn[PCC_PORTD_INDEX ]|=PCC_PCCn_CGC_MASK;   /* Enable clock for PORTD */
   PORTD->PCR[15] =  0x00000100;     /* Port D16: MUX = GPIO (to green LED) */
   PTD->PDDR |= 1<<15;               /* Port D16: Data direction = output */
+
+  PORTD->PCR[16] =  0x00000100;     /* Port D16: MUX = GPIO (to green LED) */
+  PTD->PDDR |= 1<<16;               /* Port D16: Data direction = output */
+
+
 }
 void Dlyms(int tick) {
     int i,j,k=0;
@@ -55,35 +92,167 @@ void CleanRAM(void)
 
 }
 
-int main(void) {
-  uint32_t rx_msg_count = 0;
+void task_blink_red(void)
+{
 
+	PTD->PTOR |= 1<<15;
+
+//	Dlyms(4000);
+
+}
+
+void task_blink_green(void)
+{
+
+	PTD->PTOR |= 1<<16;
+
+//	Dlyms(8000);
+
+}
+
+#define FTM_IN_CLOCK	(0x01)
+void FTM3_init_40MHZ(void)
+{
+		//此处使用的是sys_clock,80M.
+	PCC->PCCn[PCC_FTM3_INDEX] &= ~PCC_PCCn_CGC_MASK; //禁止FTM3时钟
+	PCC->PCCn[PCC_FTM3_INDEX] |= PCC_PCCn_PCS(0) | PCC_PCCn_CGC_MASK;//选择了系统时钟80M,不使用外部时钟
+
+	FTM3->MODE |= FTM_MODE_WPDIS_MASK; //写保护禁用
+	FTM3->MODE |= FTM_MODE_FTMEN_MASK; //FTM使能 开始写寄存器
+	FTM3->SC = 0;//清除状态寄存器
+	FTM3->SC |= FTM_SC_TOIE_MASK | FTM_SC_PS(0b111);//  计数器溢出中断 分频因子选择 111b Divide by 128
+	FTM3->SC &= ~FTM_SC_TOF_MASK;//清除计数器溢出标志
+
+	FTM3->COMBINE = 0x00000000;//DECAPENx, MCOMBINEx, COMBINEx=0
+	FTM3->POL = 0x00000000; //设置通道输出的极性
+	FTM3->CNTIN = 0;
+	FTM3->MOD = 625-1;//2560 - 1; //设置计数器终止值 配置中断时间  10ms
+	/* FTM3 Period = MOD-CNTIN+0x0001 ~= 2 ctr clks  */
+
+	FTM3->SC |= FTM_SC_CLKS(FTM_IN_CLOCK);//选择时钟源
+
+
+    S32_NVIC->ISER[(uint32_t)(122) >> 5U] = (uint32_t)(1UL << ((uint32_t)(122) & (uint32_t)0x1FU));
+
+
+}
+
+
+
+uint32_t	time_i=0;
+
+void FTM3_Ovf_Reload_IRQHandler (void)
+{
+	//产生FTM3中断
+	static char i=0;
+	static char z=3;
+//	i++;	//数值先从1开始计算,
+#if 0
+	__asm volatile(
+	"	mov r0,%0 		\n"
+	"	ldr r1,[r0]	\n"
+	"	add r1,r1,#1	\n"
+	"	str r1,[r0]	\n"
+//	"	lablei: .word time_i				\n"
+			:
+	:"r"(i)
+//	 :
+	);
+
+
+#else
+    int tmp;
+
+    asm(
+    		"mov r0,%1\n"
+    		"add r0,r0,#1\n"
+        "mov %0,r0\n"
+        :"=r"(tmp)
+        :"r"(i)
+    );
+#endif
+	i=tmp%1000;
+
+
+//	i=i%1000;
+
+	if(i%500==0)
+	{
+		task_blink_green();
+	}
+	if(i%800==0)
+	{
+		task_blink_red();
+	}
+
+	FTM3->SC &= ~FTM_SC_TOF_MASK; //清除中断标志
+}
+
+
+
+void taska() {
+    while (1) {
+        task_blink_red();
+        task_switch();
+    }
+}
+
+void taskb() {
+    while (1) {
+        task_blink_green();
+        task_switch();
+    }
+}
+
+
+
+
+
+int main(void) 
+{
+
+  DISABLE_INTERRUPTS();
   WDOG_disable();
   SOSC_init_8MHz();       /* Initialize system oscillator for 8 MHz xtal */
   SPLL_init_160MHz();     /* Initialize SPLL to 160 MHz with 8 MHz SOSC */
   NormalRUNmode_80MHz();  /* Init clocks: 80 MHz sysclk & core, 40 MHz bus, 20 MHz flash */
-
+  FTM3_init_40MHZ();
   PORT_init();             /* Configure ports */
+  ENABLE_INTERRUPTS();
 
+  xtos_create_task(&taskA, taska, &taskA_Stk[TASKA_STK_SIZE - 1]);
+  xtos_create_task(&taskB, taskb, &taskB_Stk[TASKB_STK_SIZE - 1]);
+  
+  gp_xtos_next_task = &taskA;
+  
+  xtos_start();
+
+  
   for (;;) {                        /* Loop: if a msg is received, transmit a msg */
-//    if ((CAN0->IFLAG1 >> 4) & 1)
-	  rx_msg_count++;
-	  if(rx_msg_count%2==0)
-	  {  /* If CAN 0 MB 4 flag is set (received msg), read MB4 */
-           /* Increment receive mug counter */
 
-        PTD->PTOR |= 1<<15;         /*   toggle output port D16 (Green LED) */
 
-        Dlyms(20000);
+		  
 
-	  }
-	  else
-	  {
 
-		  PTD->PSOR |= 1<<15;
 
-		  Dlyms(20000);
-	  }
 
   }
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
