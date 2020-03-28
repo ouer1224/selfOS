@@ -137,44 +137,45 @@ void FTM3_init_40MHZ(void)
 
 }
 
+int self_add(void)
+{
+	static char tmp=0;
+	char i=0;
 
 
-uint32_t	time_i=0;
+#if 1
+	__asm volatile(
+	"mov r1,%0\n"
+	"add r1,r1,#1\n"
+	"mov %0,r1\n"
+	:"+r"(tmp)
+
+	);
+#else
+
+	__asm volatile(
+        "mov %0,#1\n"    
+        :"=r"(tmp)    
+        :    
+    );   
+
+#endif
+
+	return tmp;
+}
+
+
 
 void FTM3_Ovf_Reload_IRQHandler (void)
 {
 	//产生FTM3中断
 	static char i=0;
-	static char z=3;
-//	i++;	//数值先从1开始计算,
-#if 0
-	__asm volatile(
-	"	mov r0,%0 		\n"
-	"	ldr r1,[r0]	\n"
-	"	add r1,r1,#1	\n"
-	"	str r1,[r0]	\n"
-//	"	lablei: .word time_i				\n"
-			:
-	:"r"(i)
-//	 :
-	);
 
 
-#else
-    int tmp;
-
-    asm(
-    		"mov r0,%1\n"
-    		"add r0,r0,#1\n"
-        "mov %0,r0\n"
-        :"=r"(tmp)
-        :"r"(i)
-    );
-#endif
-	i=tmp%1000;
 
 
-//	i=i%1000;
+	i=self_add()%1000;
+
 
 	if(i%500==0)
 	{
