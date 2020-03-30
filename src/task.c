@@ -9,7 +9,11 @@
 struct xtos_task_struct *gp_xtos_cur_task;
 struct xtos_task_struct *gp_xtos_next_task;
 
-#define asminc(a);		"	a		\n"
+#define head_asm_frame		__asm volatile(
+#define tail_asm_frame		);
+
+
+
 
 void xtos_start (void)
 {
@@ -84,6 +88,148 @@ void xtos_create_task(struct xtos_task_struct * tcb, xtos_task task, uint32 * st
 
     tcb->pTopOfStack = pstk;
 }
+
+
+void xtos_pendsv_handler(void)
+{
+	uint32_t psp_tmp=0;
+	uint32_t *pr_psp;
+	uint32_t val=0;
+	uint32_t i=0;
+	void * pr_task_tmp;
+	
+/*关中断*/
+	head_asm_frame
+	"cpsid i\n"
+	tail_asm_frame
+	
+//获取当前的psp
+	head_asm_frame
+	"mrs r0,psp\n"
+	"mov %0,r0\n"
+	:"+r"(psp_tmp)
+	tail_asm_frame
+
+	pr_psp=(uint32_t *)psp_tmp;
+
+	if(psp_tmp==1)//如果为0,则表示首次调用
+	{
+			pr_psp--;
+			__asm(
+			"mov %0,r4\n"
+			 :"+r"(val)
+			);
+			*pr_psp=val;
+
+			pr_psp--;
+			__asm(
+			"mov %0,r5\n"
+			 :"+r"(val)
+			);
+			*pr_psp=val;
+
+			pr_psp--;
+			__asm(
+			"mov %0,r6\n"
+			 :"+r"(val)
+			);
+			*pr_psp=val;
+
+			pr_psp--;
+			__asm(
+			"mov %0,r7\n"
+			 :"+r"(val)
+			);
+			*pr_psp=val;
+
+
+			pr_psp--;
+			__asm(
+			"mov %0,r8\n"
+			 :"+r"(val)
+			);
+			*pr_psp=val;
+
+
+			pr_psp--;
+			__asm(
+			"mov %0,r9\n"
+			 :"+r"(val)
+			);
+			*pr_psp=val;
+
+
+			pr_psp--;
+			__asm(
+			"mov %0,r10\n"
+			 :"+r"(val)
+			);
+			*pr_psp=val;
+
+			pr_psp--;
+			__asm(
+			"mov %0,r11\n"
+			 :"+r"(val)
+			);
+			*pr_psp=val;	
+
+			gp_xtos_cur_task->pTopOfStack=pr_psp;
+	}
+
+
+	
+	gp_xtos_cur_task=gp_xtos_next_task;
+
+	
+	/*下一个任务的sp地址*/
+	pr_psp=gp_xtos_cur_task->pTopOfStack;
+
+	head_asm_frame
+	"ldr r11,[%0]\n"
+	"subs %0,%0,0x04\n"
+
+	"ldr r10,[%0]\n"
+	"subs %0,%0,0x04\n"
+
+	"ldr r9,[%0]\n"
+	"subs %0,%0,0x04\n"
+
+	"ldr r8,[%0]\n"
+	"subs %0,%0,0x04\n"
+
+	"ldr r7,[%0]\n"
+	"subs %0,%0,0x04\n"
+
+	"ldr r6,[%0]\n"
+	"subs %0,%0,0x04\n"
+
+	"ldr r5,[%0]\n"
+	"subs %0,%0,0x04\n"
+
+	"ldr r4,[%0]\n"
+	"subs %0,%0,0x04\n"
+
+	"msr psp,%0\n"			//更新psp栈指针
+	"orr lr,lr,#0x04\n"
+
+	
+	:"+r"(pr_psp)
+	tail_asm_frame
+
+		
+
+	//开中断
+	head_asm_frame
+	"orr lr,lr,0x04\n"		//通过该设置,在退出中断后,使用psp指针
+	"cpsie i\n"
+	"bx lr\n"
+	tail_asm_frame
+
+
+
+
+}
+
 
 
 

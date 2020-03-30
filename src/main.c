@@ -16,7 +16,6 @@
 #include "task.h"
 
 
-
 #define DISABLE_INTERRUPTS() __asm volatile ("cpsid i" : : : "memory")
 #define ENABLE_INTERRUPTS() __asm volatile ("cpsie i" : : : "memory")
 
@@ -38,7 +37,7 @@ void task_switch() {
     else
         gp_xtos_next_task = &taskA;
 
- //   xtos_context_switch();
+//    xtos_context_switch();
 }
 
 
@@ -141,9 +140,6 @@ int self_add(void)
 {
 	static char tmp=0;
 	char i=0;
-
-
-#if 1
 	__asm volatile(
 	"mov r1,%0\n"
 	"add r1,r1,#1\n"
@@ -151,15 +147,6 @@ int self_add(void)
 	:"+r"(tmp)
 
 	);
-#else
-
-	__asm volatile(
-        "mov %0,#1\n"    
-        :"=r"(tmp)    
-        :    
-    );   
-
-#endif
 
 	return tmp;
 }
@@ -170,9 +157,6 @@ void FTM3_Ovf_Reload_IRQHandler (void)
 {
 	//²úÉúFTM3ÖÐ¶Ï
 	static char i=0;
-
-
-
 
 	i=self_add()%1000;
 
@@ -205,8 +189,34 @@ void taskb() {
     }
 }
 
+int test_asm(char x,char y,char z)
+{
+	char valx=0;
+	char valy=0,valz=0;
+	int buf[4];
+	int *pr=buf;
+	uint32_t val_pr;
+
+	val_pr=(int)pr;
+#if 1
+		__asm volatile(
+		"str r0,[%0]\n"
+		"add %0,%0,0x04\n"
+
+		"str r1,[%0]\n"
+		"add %0,%0,0x04\n"
+
+		"str r2,[%0]\n"
+		"add %0,%0,0x04\n"
 
 
+		:"+r"(pr)
+		);
+	
+#endif
+
+			return 0xff;
+}
 
 
 int main(void) 
@@ -220,7 +230,6 @@ int main(void)
   FTM3_init_40MHZ();
   PORT_init();             /* Configure ports */
   ENABLE_INTERRUPTS();
-
   xtos_create_task(&taskA, taska, &taskA_Stk[TASKA_STK_SIZE - 1]);
   xtos_create_task(&taskB, taskb, &taskB_Stk[TASKB_STK_SIZE - 1]);
   
@@ -228,13 +237,18 @@ int main(void)
   
   xtos_start();
 
+	int i=0;
   
   for (;;) {                        /* Loop: if a msg is received, transmit a msg */
 
 
 		  
+  i=test_asm(3,4,5);
 
+	if(i!=0)
+	{
 
+	}
 
 
   }
