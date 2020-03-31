@@ -25,6 +25,7 @@
 #define TASKB_STK_SIZE 1024
 static unsigned int taskA_Stk[TASKA_STK_SIZE];
 static unsigned int taskB_Stk[TASKB_STK_SIZE];
+static unsigned int taskC_Stk[TASKB_STK_SIZE];
 
 uint32_t *pr_taskA=taskB_Stk+TASKA_STK_SIZE-1;
 
@@ -260,7 +261,7 @@ __asm volatile
 
 
 	"msr psp,r0\n"			//¸üÐÂpspÕ»Ö¸Õë
-	"mov r7,r0\n"
+//	"mov r7,r0\n"
 	"orr lr,lr,#0x04\n"
 
 );
@@ -281,8 +282,12 @@ __asm volatile
 
 void taska() {
     while (1) {
-        task_blink_red();
-        task_switch();
+
+	
+//        task_blink_red();
+			PTD->PTOR |= 1<<15;
+//        task_switch();
+	Dlyms(2000);
     }
 }
 
@@ -349,7 +354,7 @@ int main(void)
   
   gp_xtos_next_task = &taskA;
 
-  xtos_create_task(&taskA, taska, &taskA_Stk[TASKA_STK_SIZE - 1]);  
+  xtos_create_task(&taskA, taska, &taskC_Stk[TASKA_STK_SIZE - 1]);  
   ENABLE_INTERRUPTS();
   xtos_start();
 
