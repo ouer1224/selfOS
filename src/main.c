@@ -156,11 +156,6 @@ int self_add(void)
 
 void FTM3_Ovf_Reload_IRQHandler (void)
 {
-	//产生FTM3中断
-	static char i=0;
-	uint32_t * pr_psp;
-
-	i=self_add()%1000;
 
 #if 0
 	if(i%500==0)
@@ -174,50 +169,60 @@ void FTM3_Ovf_Reload_IRQHandler (void)
 #endif
 	FTM3->SC &= ~FTM_SC_TOF_MASK; //清除中断标志
 
-	/*下一个任务的sp地址*/
-		pr_psp=taskA.pTopOfStack;
+
 #if 1
+
 __asm volatile
 (
-	"ldr r4,[%0]\n"
-	"add %0,%0,0x04\n"
-		:"+r"(pr_psp)
+"mov r0,%0\n"
+:"+r"(taskA.pTopOfStack)
+);
 
+
+__asm volatile
+(
+	"ldr r4,[r0]\n"
+	"add r0,r0,0x04\n"
 	);
 
 __asm volatile
 (
-	"ldr r5,[%0]\n"
-	"add %0,%0,0x04\n"
-		:"+r"(pr_psp)
+	"ldr r5,[r0]\n"
+	"add r0,r0,0x04\n"
+
 	);
 __asm volatile
 (
-	"ldr r6,[%0]\n"
-	"add %0,%0,0x04\n"
-		:"+r"(pr_psp)
+	"ldr r6,[r0]\n"
+	"add r0,r0,0x04\n"
+
 	);
 __asm volatile
 (
-	"ldr r7,[%0]\n"
-	"add %0,%0,0x04\n"
+	"ldr r7,[r0]\n"
+	"add r0,r0,0x04\n"
 
-	"ldr r8,[%0]\n"
-	"add %0,%0,0x04\n"
 
-	"ldr r9,[%0]\n"
-	"add %0,%0,0x04\n"
+	"ldr r8,[r0]\n"
+	"add r0,r0,0x04\n"
 
-	"ldr r10,[%0]\n"
-	"add %0,%0,0x04\n"
 
-	"ldr r11,[%0]\n"
-	"add %0,%0,0x04\n"
+	"ldr r9,[r0]\n"
+	"add r0,r0,0x04\n"
 
-	"msr psp,%0\n"			//更新psp栈指针
-	"mov r7,%0\n"
+
+	"ldr r10,[r0]\n"
+	"add r0,r0,0x04\n"
+
+
+	"ldr r11,[r0]\n"
+	"add r0,r0,0x04\n"
+
+
+	"msr psp,r0\n"			//更新psp栈指针
+	"mov r7,r0\n"
 	"orr lr,lr,#0x04\n"
-	:"+r"(pr_psp)
+
 );
 
 

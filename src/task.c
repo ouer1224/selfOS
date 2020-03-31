@@ -53,12 +53,12 @@ void xtos_create_task(struct xtos_task_struct * tcb, xtos_task task, uint32 * st
 
     *(--pstk) = (uint32)0x01000000uL; // xPSR
     *(--pstk) = (uint32)task;         // Entry Point
-    *(--pstk) = (uint32)task;; // R14 (LR)
-    *(--pstk) = (uint32)task; // R12
-    *(--pstk) = (uint32)task; // R3
-    *(--pstk) = (uint32)task; // R2
-    *(--pstk) = (uint32)task; // R1
-    *(--pstk) = (uint32)task;  // R0
+    *(--pstk) = (uint32)xtos_distroy_task;; // R14 (LR)
+    *(--pstk) = (uint32)12121212; // R12
+    *(--pstk) = (uint32)03030303; // R3
+    *(--pstk) = (uint32)02020202; // R2
+    *(--pstk) = (uint32)01010101; // R1
+    *(--pstk) = (uint32)0x00000000;  // R0
 
 	
 //	*(--pstk) = (uint32)0xfffffffd;
