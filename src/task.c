@@ -74,6 +74,7 @@ void xtos_create_task(struct xtos_task_struct * tcb, xtos_task task, uint32 * st
     *(--pstk) = (uint32)0x04040404uL; // R4
 
     tcb->pTopOfStack = pstk;
+	tcb->saved=0;
 }
 
 

@@ -169,6 +169,55 @@ void FTM3_Ovf_Reload_IRQHandler (void)
 #endif
 	FTM3->SC &= ~FTM_SC_TOF_MASK; //清除中断标志
 
+if(taskA.saved==1)
+{
+	__asm volatile
+	(
+	"mrs r0,psp\n"
+	
+	"subs r0,r0,#0x04\n"
+	"str r11,[r0]\n"
+
+
+	"subs r0,r0,#0x04\n"
+	"str r10,[r0]\n"
+
+	"subs r0,r0,#0x04\n"
+	"str r9,[r0]\n"
+
+	"subs r0,r0,#0x04\n"
+	"str r8,[r0]\n"
+
+	"subs r0,r0,#0x04\n"
+	"str r7,[r0]\n"
+
+	"subs r0,r0,#0x04\n"
+	"str r6,[r0]\n"
+
+
+	"subs r0,r0,#0x04\n"
+	"str r5,[r0]\n"
+
+	"subs r0,r0,#0x04\n"
+	"str r4,[r0]\n"
+
+	);
+
+	__asm volatile
+	(
+
+	"mov %0,r0\n"
+	:"+r"(taskA.pTopOfStack)
+	);
+
+}
+else
+{
+
+	taskA.saved=1;
+
+}
+
 
 #if 1
 
@@ -183,23 +232,14 @@ __asm volatile
 (
 	"ldr r4,[r0]\n"
 	"add r0,r0,0x04\n"
-	);
 
-__asm volatile
-(
 	"ldr r5,[r0]\n"
 	"add r0,r0,0x04\n"
 
-	);
-__asm volatile
-(
 	"ldr r6,[r0]\n"
 	"add r0,r0,0x04\n"
 
-	);
-__asm volatile
-(
-	"ldr r7,[r0]\n"
+//	"ldr r7,[r0]\n"
 	"add r0,r0,0x04\n"
 
 
@@ -226,7 +266,6 @@ __asm volatile
 );
 
 
-
 __asm volatile
 (
 "nop\n"
@@ -234,12 +273,6 @@ __asm volatile
 
 
 #endif
-
-
-
-
-
-
 
 	
 }
