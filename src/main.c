@@ -26,6 +26,7 @@
 static unsigned int taskA_Stk[TASKA_STK_SIZE];
 static unsigned int taskB_Stk[TASKB_STK_SIZE];
 
+uint32_t *pr_taskA=taskB_Stk+TASKA_STK_SIZE-1;
 
 
 static struct xtos_task_struct taskA;
@@ -157,10 +158,11 @@ void FTM3_Ovf_Reload_IRQHandler (void)
 {
 	//产生FTM3中断
 	static char i=0;
+	uint32_t * pr_psp;
 
 	i=self_add()%1000;
 
-
+#if 0
 	if(i%500==0)
 	{
 		task_blink_green();
@@ -169,8 +171,72 @@ void FTM3_Ovf_Reload_IRQHandler (void)
 	{
 		task_blink_red();
 	}
-
+#endif
 	FTM3->SC &= ~FTM_SC_TOF_MASK; //清除中断标志
+
+	/*下一个任务的sp地址*/
+		pr_psp=taskA.pTopOfStack;
+#if 1
+__asm volatile
+(
+	"ldr r4,[%0]\n"
+	"add %0,%0,0x04\n"
+		:"+r"(pr_psp)
+
+	);
+
+__asm volatile
+(
+	"ldr r5,[%0]\n"
+	"add %0,%0,0x04\n"
+		:"+r"(pr_psp)
+	);
+__asm volatile
+(
+	"ldr r6,[%0]\n"
+	"add %0,%0,0x04\n"
+		:"+r"(pr_psp)
+	);
+__asm volatile
+(
+	"ldr r7,[%0]\n"
+	"add %0,%0,0x04\n"
+
+	"ldr r8,[%0]\n"
+	"add %0,%0,0x04\n"
+
+	"ldr r9,[%0]\n"
+	"add %0,%0,0x04\n"
+
+	"ldr r10,[%0]\n"
+	"add %0,%0,0x04\n"
+
+	"ldr r11,[%0]\n"
+	"add %0,%0,0x04\n"
+
+	"msr psp,%0\n"			//更新psp栈指针
+	"mov r7,%0\n"
+	"orr lr,lr,#0x04\n"
+	:"+r"(pr_psp)
+);
+
+
+
+__asm volatile
+(
+"nop\n"
+);
+
+
+#endif
+
+
+
+
+
+
+
+	
 }
 
 
@@ -222,6 +288,17 @@ int test_asm(char x,char y,char z)
 int main(void) 
 {
 
+
+	__asm volatile
+	(
+	"msr psp,%0\n"
+	"mrs r0,control\n"
+	"orr r0,r0,#0x02\n"
+	"msr control,r0\n"
+	:"+r"(pr_taskA)
+	);
+
+
   DISABLE_INTERRUPTS();
   WDOG_disable();
   SOSC_init_8MHz();       /* Initialize system oscillator for 8 MHz xtal */
@@ -229,12 +306,13 @@ int main(void)
   NormalRUNmode_80MHz();  /* Init clocks: 80 MHz sysclk & core, 40 MHz bus, 20 MHz flash */
   FTM3_init_40MHZ();
   PORT_init();             /* Configure ports */
-  ENABLE_INTERRUPTS();
-  xtos_create_task(&taskA, taska, &taskA_Stk[TASKA_STK_SIZE - 1]);
-  xtos_create_task(&taskB, taskb, &taskB_Stk[TASKB_STK_SIZE - 1]);
+  
+
   
   gp_xtos_next_task = &taskA;
-  
+
+  xtos_create_task(&taskA, taska, &taskA_Stk[TASKA_STK_SIZE - 1]);  
+  ENABLE_INTERRUPTS();
   xtos_start();
 
 	int i=0;
@@ -242,14 +320,14 @@ int main(void)
   for (;;) {                        /* Loop: if a msg is received, transmit a msg */
 
 
-		  
-  i=test_asm(3,4,5);
-
+#if 1
+ // i=test_asm(3,4,5);
+	  i++;
 	if(i!=0)
 	{
 
 	}
-
+#endif
 
   }
 }

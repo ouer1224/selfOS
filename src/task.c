@@ -53,29 +53,16 @@ void xtos_create_task(struct xtos_task_struct * tcb, xtos_task task, uint32 * st
 
     *(--pstk) = (uint32)0x01000000uL; // xPSR
     *(--pstk) = (uint32)task;         // Entry Point
-    *(--pstk) = (uint32)xtos_distroy_task; // R14 (LR)
-    *(--pstk) = (uint32)0x12121212uL; // R12
-    *(--pstk) = (uint32)0x03030303uL; // R3
-    *(--pstk) = (uint32)0x02020202uL; // R2
-    *(--pstk) = (uint32)0x01010101uL; // R1
-    *(--pstk) = (uint32)0x00000000u;  // R0
+    *(--pstk) = (uint32)task;; // R14 (LR)
+    *(--pstk) = (uint32)task; // R12
+    *(--pstk) = (uint32)task; // R3
+    *(--pstk) = (uint32)task; // R2
+    *(--pstk) = (uint32)task; // R1
+    *(--pstk) = (uint32)task;  // R0
 
-    *(--pstk) = (uint32)0x00000031L; //s31
-    *(--pstk) = (uint32)0x00000030L; //s30
-    *(--pstk) = (uint32)0x00000029L; //s29
-    *(--pstk) = (uint32)0x00000028L; //s28
-    *(--pstk) = (uint32)0x00000027L; //s27
-    *(--pstk) = (uint32)0x00000026L; //s26	
-    *(--pstk) = (uint32)0x00000025L; //s25
-    *(--pstk) = (uint32)0x00000024L; //s24
-    *(--pstk) = (uint32)0x00000023L; //s23
-    *(--pstk) = (uint32)0x00000022L; //s22
-    *(--pstk) = (uint32)0x00000021L; //s21
-    *(--pstk) = (uint32)0x00000020L; //s20
-    *(--pstk) = (uint32)0x00000019L; //s19
-    *(--pstk) = (uint32)0x00000018L; //s18
-    *(--pstk) = (uint32)0x00000017L; //s17
-    *(--pstk) = (uint32)0x00000016L; //s16
+	
+//	*(--pstk) = (uint32)0xfffffffd;
+
 
     *(--pstk) = (uint32)0x11111111uL; // R11
     *(--pstk) = (uint32)0x10101010uL; // R10
@@ -186,28 +173,28 @@ void xtos_pendsv_handler(void)
 
 	head_asm_frame
 	"ldr r11,[%0]\n"
-	"subs %0,%0,0x04\n"
+	"add %0,%0,0x04\n"
 
 	"ldr r10,[%0]\n"
-	"subs %0,%0,0x04\n"
+	"add %0,%0,0x04\n"
 
 	"ldr r9,[%0]\n"
-	"subs %0,%0,0x04\n"
+	"add %0,%0,0x04\n"
 
 	"ldr r8,[%0]\n"
-	"subs %0,%0,0x04\n"
+	"add %0,%0,0x04\n"
 
 	"ldr r7,[%0]\n"
-	"subs %0,%0,0x04\n"
+	"add %0,%0,0x04\n"
 
 	"ldr r6,[%0]\n"
-	"subs %0,%0,0x04\n"
+	"add %0,%0,0x04\n"
 
 	"ldr r5,[%0]\n"
-	"subs %0,%0,0x04\n"
+	"add %0,%0,0x04\n"
 
 	"ldr r4,[%0]\n"
-	"subs %0,%0,0x04\n"
+	"add %0,%0,0x04\n"
 
 	"msr psp,%0\n"			//¸üĞÂpspÕ»Ö¸Õë
 	"orr lr,lr,#0x04\n"
