@@ -6,8 +6,8 @@
 
 
 
-struct xtos_task_struct *gp_xtos_cur_task;
-struct xtos_task_struct *gp_xtos_next_task;
+volatile struct  xtos_task_struct  *gp_xtos_cur_task;
+volatile struct  xtos_task_struct  *gp_xtos_next_task;
 
 #define head_asm_frame		__asm volatile(
 #define tail_asm_frame		);
@@ -59,10 +59,6 @@ void xtos_create_task(struct xtos_task_struct * tcb, xtos_task task, uint32 * st
     *(--pstk) = (uint32)02020202; // R2
     *(--pstk) = (uint32)01010101; // R1
     *(--pstk) = (uint32)0x00000000;  // R0
-
-	
-//	*(--pstk) = (uint32)0xfffffffd;
-
 
     *(--pstk) = (uint32)0x11111111uL; // R11
     *(--pstk) = (uint32)0x10101010uL; // R10

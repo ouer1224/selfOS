@@ -14,8 +14,8 @@ struct xtos_task_struct {
 typedef void(*xtos_task)(void);
 
 
-extern struct xtos_task_struct *gp_xtos_cur_task;
-extern struct xtos_task_struct *gp_xtos_next_task;
+extern volatile struct xtos_task_struct *gp_xtos_cur_task;
+extern volatile struct xtos_task_struct *gp_xtos_next_task;
 
 void xtos_start(void);
 void xtos_context_switch(void);

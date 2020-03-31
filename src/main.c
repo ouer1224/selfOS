@@ -23,15 +23,17 @@
 
 #define TASKA_STK_SIZE 1024
 #define TASKB_STK_SIZE 1024
-static unsigned int taskA_Stk[TASKA_STK_SIZE];
+//static unsigned int taskA_Stk[TASKA_STK_SIZE];
 static unsigned int taskB_Stk[TASKB_STK_SIZE];
 static unsigned int taskC_Stk[TASKB_STK_SIZE];
+static unsigned int taskD_Stk[TASKB_STK_SIZE];
+
 
 uint32_t *pr_taskA=taskB_Stk+TASKA_STK_SIZE-1;
+uint32_t count_sp=0;
 
-
-static struct xtos_task_struct taskA;
-static struct xtos_task_struct taskB;
+static  volatile struct xtos_task_struct taskA;
+static volatile struct xtos_task_struct taskB;
 
 void task_switch() {
     if (gp_xtos_cur_task == &taskA)
@@ -39,7 +41,6 @@ void task_switch() {
     else
         gp_xtos_next_task = &taskA;
 
-//    xtos_context_switch();
 }
 
 
@@ -158,19 +159,9 @@ int self_add(void)
 void FTM3_Ovf_Reload_IRQHandler (void)
 {
 
-#if 0
-	if(i%500==0)
-	{
-		task_blink_green();
-	}
-	if(i%800==0)
-	{
-		task_blink_red();
-	}
-#endif
 	FTM3->SC &= ~FTM_SC_TOF_MASK; //清除中断标志
 
-if(taskA.saved==1)
+if(gp_xtos_cur_task->saved==1)
 {
 	__asm volatile
 	(
@@ -208,24 +199,37 @@ if(taskA.saved==1)
 	(
 
 	"mov %0,r0\n"
-	:"+r"(taskA.pTopOfStack)
+	:"+r"(gp_xtos_cur_task->pTopOfStack)
 	);
+
+    if (gp_xtos_cur_task == &taskA)
+    {
+        gp_xtos_cur_task = &taskB;
+    }
+    else
+    {
+        gp_xtos_cur_task = &taskA;
+    }
+	if(taskA.pTopOfStack!=taskB.pTopOfStack)
+	{
+		count_sp++;
+	}
 
 }
 else
 {
 
 	taskA.saved=1;
+	taskB.saved=1;
 
 }
 
 
 #if 1
-
 __asm volatile
 (
 "mov r0,%0\n"
-:"+r"(taskA.pTopOfStack)
+:"+r"(gp_xtos_cur_task->pTopOfStack)
 );
 
 
@@ -284,17 +288,18 @@ void taska() {
     while (1) {
 
 	
-//        task_blink_red();
-			PTD->PTOR |= 1<<15;
-//        task_switch();
+   task_blink_red();
 	Dlyms(2000);
+
+	
+
     }
 }
 
 void taskb() {
     while (1) {
         task_blink_green();
-        task_switch();
+		Dlyms(2000);
     }
 }
 
@@ -352,9 +357,13 @@ int main(void)
   
 
   
-  gp_xtos_next_task = &taskA;
+
 
   xtos_create_task(&taskA, taska, &taskC_Stk[TASKA_STK_SIZE - 1]);  
+  xtos_create_task(&taskB, taskb, &taskD_Stk[TASKA_STK_SIZE - 1]);  
+
+  gp_xtos_cur_task = &taskA;
+	
   ENABLE_INTERRUPTS();
   xtos_start();
 
