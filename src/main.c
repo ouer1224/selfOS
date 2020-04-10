@@ -255,7 +255,7 @@ void taska() {
     	}
 	
    task_blink_red();
-	Dlymsa(1);
+	Dlymsa(2000);
 
 	__asm volatile
 	(
@@ -315,7 +315,7 @@ void taskb() {
 	}
 
         task_blink_green();
-		Dlymsb(1);
+		Dlymsb(2000);
 
 //			SCB_ICSR=(0x01<<28);
     }
