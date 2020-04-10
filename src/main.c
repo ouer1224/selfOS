@@ -63,6 +63,13 @@ static volatile struct xtos_task_struct taskB;
 
 
 
+#define SYST_CSR	(*(volatile unsigned int*)  (0xE000E010))	//control state
+#define SYST_RVR	(*(volatile unsigned int*)  (0xE000E014))	//reload val
+#define SYST_CVR	(*(volatile unsigned int*)  (0xE000E018))	//current val
+
+
+
+
 
 #define pr_NVIC_ISER   ((volatile unsigned int*)  (0xE000E100))
 #define pr_NVIC_ICER   ((volatile unsigned int*)  (0xE000E180))
@@ -121,21 +128,31 @@ void Dlyms(int tick) {
 void Dlymsa(int tick) {
     int i,j,k=0;
 
+	ENABLE_INTERRUPTS();
+
     for (i=0;i<tick;i++) {
         for (j=0;j<300;j++) {
             k++;
         }
     }
+
+		DISABLE_INTERRUPTS(); 
+
 }
 
 void Dlymsb(int tick) {
     int i,j,k=0;
 
+	
+	ENABLE_INTERRUPTS();
+
     for (i=0;i<tick;i++) {
         for (j=0;j<300;j++) {
             k++;
         }
     }
+
+		DISABLE_INTERRUPTS(); 
 }
 
 #define __SRAM_BASE_ADDR		0x1FFF8000
@@ -200,7 +217,7 @@ void FTM3_init_40MHZ(void)
 
  //   S32_NVIC->ISER[(uint32_t)(122) >> 5U] = (uint32_t)(1UL << ((uint32_t)(122) & (uint32_t)0x1FU));
 
- 	pr_NVIC_ISER[122/32]=0x01<<(122%32);
+// 	pr_NVIC_ISER[122/32]=0x01<<(122%32);
 
 
 }
@@ -398,14 +415,16 @@ void taska() {
     while (1) {
 
     	int i=0;
-    	for(i=0;i<0xffff;i++)
+//    	for(i=0;i<0xffff;i++)
     	{
     	while(0);
 
     	}
 	
    task_blink_red();
-	Dlymsa(1);
+	  DISABLE_INTERRUPTS();	
+	Dlymsa(2000);
+	ENABLE_INTERRUPTS();
 
 	__asm volatile
 	(
@@ -437,7 +456,7 @@ void taskb() {
     while (1) {
 
 	int i=0;
-	for(i=0;i<0xffff;i++)
+//	for(i=0;i<0xffff;i++)
 	{
 		while(0);
 	}
@@ -464,7 +483,9 @@ void taskb() {
 	}
 
         task_blink_green();
-		Dlymsb(1);
+
+	Dlymsb(2000);
+
     }
 }
 
@@ -504,7 +525,15 @@ void PendSV_Handler(void)
 
 }
 
+void SysTick_Handler(void)
+{
 
+
+	SCB_ICSR=0x01<<25;
+
+	while(0);
+
+}
 
 
 
@@ -554,6 +583,18 @@ int main(void)
 
 
 	SCB_SHPR3=0xff<<16;
+
+
+	SYST_RVR=160000;
+	SYST_CVR=0;
+
+	SYST_CSR=(0x01<<2)|(0x01<<1);
+	SYST_CSR=SYST_CSR&(~(0x01<<0));
+
+	SCB_SHPR3=0x01<<24;
+
+	SYST_CSR=SYST_CSR|0x01;
+	
 
 
   int i=0;
