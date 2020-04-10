@@ -200,7 +200,7 @@ void FTM3_init_40MHZ(void)
 
  //   S32_NVIC->ISER[(uint32_t)(122) >> 5U] = (uint32_t)(1UL << ((uint32_t)(122) & (uint32_t)0x1FU));
 
- 	pr_NVIC_ISER[122/32]=0x01<<(122%32);
+ //	pr_NVIC_ISER[122/32]=0x01<<(122%32);
 
 
 }
@@ -233,160 +233,8 @@ void FTM3_Ovf_Reload_IRQHandler (void)
 {
 
 
+
 	FTM3->SC &= ~FTM_SC_TOF_MASK; //清除中断标志
-#if 0
-	__asm volatile
-	(
-	"mov r0,gSCB_ICSR\n"
-	"mov r1,#0x10000000\n"
-	"str r1,[r0]\n"
-	:"+r"(gSCB_ICSR)
-	);
-#endif
-
-	SCB_ICSR=(0x01<<28);
-
-
-
-if(gp_xtos_cur_task->saved==1)
-{
-	__asm volatile
-	(
-	"mrs r0,psp\n"
-	
-	"subs r0,r0,#0x04\n"
-	"str r11,[r0]\n"
-
-
-	"subs r0,r0,#0x04\n"
-	"str r10,[r0]\n"
-
-	"subs r0,r0,#0x04\n"
-	"str r9,[r0]\n"
-
-	"subs r0,r0,#0x04\n"
-	"str r8,[r0]\n"
-
-	"subs r0,r0,#0x04\n"
-	"str r7,[r0]\n"
-
-	"subs r0,r0,#0x04\n"
-	"str r6,[r0]\n"
-
-
-	"subs r0,r0,#0x04\n"
-	"str r5,[r0]\n"
-
-	"subs r0,r0,#0x04\n"
-	"str r4,[r0]\n"
-
-	);
-
-	__asm volatile
-	(
-
-	"mov %0,r0\n"
-	:"+r"(gp_xtos_cur_task->pTopOfStack)
-	);
-
-    if (gp_xtos_cur_task == &taskA)
-    {
-        gp_xtos_cur_task = &taskB;
-    }
-    else
-    {
-        gp_xtos_cur_task = &taskA;
-    }
-	if(taskA.pTopOfStack!=taskB.pTopOfStack)
-	{
-		count_sp++;
-	}
-
-}
-else
-{
-
-	taskA.saved=1;
-	taskB.saved=1;
-
-}
-
-
-#if 1
-__asm volatile
-(
-"mov r0,%0\n"
-:"+r"(gp_xtos_cur_task->pTopOfStack)
-);
-
-
-__asm volatile
-(
-	"ldr r4,[r0]\n"
-	"add r0,r0,0x04\n"
-
-	"ldr r5,[r0]\n"
-	"add r0,r0,0x04\n"
-
-	"ldr r6,[r0]\n"
-	"add r0,r0,0x04\n"
-
-//	"ldr r7,[r0]\n"
-	"add r0,r0,0x04\n"
-
-
-	"ldr r8,[r0]\n"
-	"add r0,r0,0x04\n"
-
-
-	"ldr r9,[r0]\n"
-	"add r0,r0,0x04\n"
-
-
-	"ldr r10,[r0]\n"
-	"add r0,r0,0x04\n"
-
-
-	"ldr r11,[r0]\n"
-	"add r0,r0,0x04\n"
-
-#if 1
-	"msr psp,r0\n"			//更新psp栈指针
-	"isb\n"
-//	"mov r7,r0\n"
-	"orr lr,lr,#0x04\n"
-	"isb\n"
-#else
-//	"pop {r7}\n"
-	//"mov r7,#0\n"
-//	"mrs r7,psp\n"
-
-		"mov     sp, r7\n"
-		"ldr.w   r7, [sp], #4\n"
-
-		
-		"msr psp,r0\n"			//更新psp栈指针
-		"isb\n"
-	//	"mov r7,r0\n"
-		"orr lr,lr,#0x04\n"
-		"isb\n"
-
-//		bx      lr
-	"mrs r7,psp\n"
-
-	"bx r14\n"
-	".align 4\n"
-#endif	
-);
-
-
-__asm volatile
-(
-"nop\n"
-);
-
-
-#endif
 
 	
 }
@@ -429,6 +277,7 @@ void taska() {
 	{
 		while(1);
 	}
+		SCB_ICSR=(0x01<<28);
 
     }
 }
@@ -465,6 +314,8 @@ void taskb() {
 
         task_blink_green();
 		Dlymsb(1);
+
+			SCB_ICSR=(0x01<<28);
     }
 }
 
@@ -501,6 +352,146 @@ void PendSV_Handler(void)
 {
 	SCB_ICSR=(0x01<<27);
 	while(0);
+	
+	if(gp_xtos_cur_task->saved==1)
+	{
+		__asm volatile
+		(
+		"mrs r0,psp\n"
+		
+		"subs r0,r0,#0x04\n"
+		"str r11,[r0]\n"
+	
+	
+		"subs r0,r0,#0x04\n"
+		"str r10,[r0]\n"
+	
+		"subs r0,r0,#0x04\n"
+		"str r9,[r0]\n"
+	
+		"subs r0,r0,#0x04\n"
+		"str r8,[r0]\n"
+	
+		"subs r0,r0,#0x04\n"
+		"str r7,[r0]\n"
+	
+		"subs r0,r0,#0x04\n"
+		"str r6,[r0]\n"
+	
+	
+		"subs r0,r0,#0x04\n"
+		"str r5,[r0]\n"
+	
+		"subs r0,r0,#0x04\n"
+		"str r4,[r0]\n"
+	
+		);
+	
+		__asm volatile
+		(
+	
+		"mov %0,r0\n"
+		:"+r"(gp_xtos_cur_task->pTopOfStack)
+		);
+	
+		if (gp_xtos_cur_task == &taskA)
+		{
+			gp_xtos_cur_task = &taskB;
+		}
+		else
+		{
+			gp_xtos_cur_task = &taskA;
+		}
+		if(taskA.pTopOfStack!=taskB.pTopOfStack)
+		{
+			count_sp++;
+		}
+	
+	}
+	else
+	{
+	
+		taskA.saved=1;
+		taskB.saved=1;
+	
+	}
+	
+	
+#if 1
+	__asm volatile
+	(
+	"mov r0,%0\n"
+	:"+r"(gp_xtos_cur_task->pTopOfStack)
+	);
+	
+	
+	__asm volatile
+	(
+		"ldr r4,[r0]\n"
+		"add r0,r0,0x04\n"
+	
+		"ldr r5,[r0]\n"
+		"add r0,r0,0x04\n"
+	
+		"ldr r6,[r0]\n"
+		"add r0,r0,0x04\n"
+	
+	//	"ldr r7,[r0]\n"
+		"add r0,r0,0x04\n"
+	
+	
+		"ldr r8,[r0]\n"
+		"add r0,r0,0x04\n"
+	
+	
+		"ldr r9,[r0]\n"
+		"add r0,r0,0x04\n"
+	
+	
+		"ldr r10,[r0]\n"
+		"add r0,r0,0x04\n"
+	
+	
+		"ldr r11,[r0]\n"
+		"add r0,r0,0x04\n"
+	
+#if 1
+		"msr psp,r0\n"			//更新psp栈指针
+		"isb\n"
+	//	"mov r7,r0\n"
+		"orr lr,lr,#0x04\n"
+		"isb\n"
+#else
+	//	"pop {r7}\n"
+		//"mov r7,#0\n"
+	//	"mrs r7,psp\n"
+	
+			"mov	 sp, r7\n"
+			"ldr.w	 r7, [sp], #4\n"
+	
+			
+			"msr psp,r0\n"			//更新psp栈指针
+			"isb\n"
+		//	"mov r7,r0\n"
+			"orr lr,lr,#0x04\n"
+			"isb\n"
+	
+	//		bx		lr
+		"mrs r7,psp\n"
+	
+		"bx r14\n"
+		".align 4\n"
+#endif	
+	);
+	
+	
+	__asm volatile
+	(
+	"nop\n"
+	);
+	
+	
+#endif
 
 }
 
@@ -553,7 +544,10 @@ int main(void)
 
 
 
-	SCB_SHPR3=0xff<<16;
+	SCB_SHPR3=0x10<<16;
+
+	SCB_ICSR=(0x01<<28);
+
 
 
   int i=0;
