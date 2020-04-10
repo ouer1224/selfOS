@@ -14,6 +14,8 @@
 
 #include <stdint.h>
 #include "task.h"
+#include "cortex_m4_register.h"
+
 
 
 #define DISABLE_INTERRUPTS() __asm volatile ("cpsid i" : : : "memory")
@@ -42,56 +44,6 @@ uint32_t addr_psp=0;
 volatile struct xtos_task_struct taskA;
 volatile struct xtos_task_struct taskB;
 
-
-#define SYSHND_CTRL (*(volatile unsigned int*)  (0xE000ED24u))
-// Memory Management Fault Status Register
-#define NVIC_MFSR   (*(volatile unsigned char*) (0xE000ED28u))
-// Bus Fault Status Register
-#define NVIC_BFSR   (*(volatile unsigned char*) (0xE000ED29u))
-// Usage Fault Status Register
-#define NVIC_UFSR   (*(volatile unsigned short*)(0xE000ED2Au))
-// Hard Fault Status Register
-#define NVIC_HFSR   (*(volatile unsigned int*)  (0xE000ED2Cu))
-// Debug Fault Status Register
-#define NVIC_DFSR   (*(volatile unsigned int*)  (0xE000ED30u))
-// Bus Fault Manage Address Register
-#define NVIC_BFAR   (*(volatile unsigned int*)  (0xE000ED38u))
-// Auxiliary Fault Status Register
-#define NVIC_AFSR   (*(volatile unsigned int*)  (0xE000ED3Cu))
-
-#define SCB_ICSR   (*(volatile unsigned int*)  (0xE000ED04))
-#define SCB_SHPR3	(*(volatile unsigned int*)  (0xE000ED20))
-
-
-
-#define SYST_CSR	(*(volatile unsigned int*)  (0xE000E010))	//control state
-#define SYST_RVR	(*(volatile unsigned int*)  (0xE000E014))	//reload val
-#define SYST_CVR	(*(volatile unsigned int*)  (0xE000E018))	//current val
-
-
-
-
-
-#define pr_NVIC_ISER   ((volatile unsigned int*)  (0xE000E100))
-#define pr_NVIC_ICER   ((volatile unsigned int*)  (0xE000E180))
-
-#define pr_NVIC_ISPR   ((volatile unsigned int*)  (0xE000E200))
-#define pr_NVIC_ICPR   ((volatile unsigned int*)  (0xE000E280))
-
-#define pr_NVIC_IABR   ((volatile unsigned int*)  (0xE000E300))
-
-#define pr_NVIC_IPR   ((volatile unsigned int*)  (0xE000E400))
-
-
-
-
-void task_switch() {
-    if (gp_xtos_cur_task == &taskA)
-        gp_xtos_next_task = &taskB;
-    else
-        gp_xtos_next_task = &taskA;
-
-}
 
 
 
@@ -125,37 +77,6 @@ void Dlyms(int tick) {
     }
 }
 
-
-void Dlymsa(int tick) {
-    int i,j,k=0;
-
-
-
-    for (i=0;i<tick;i++) {
-        for (j=0;j<300;j++) {
-            k++;
-        }
-    }
-
-
-
-}
-
-void Dlymsb(int tick) {
-    int i,j,k=0;
-
-	
-
-
-    for (i=0;i<tick;i++) {
-        for (j=0;j<300;j++) {
-            k++;
-        }
-    }
-
-
-}
-
 #define __SRAM_BASE_ADDR		0x1FFF8000
 #define __SRAM_SIZE				0x0000F000
 
@@ -181,16 +102,12 @@ void task_blink_red(void)
 
 	PTD->PTOR |= 1<<15;
 
-//	Dlyms(4000);
-
 }
 
 void task_blink_green(void)
 {
 
 	PTD->PTOR |= 1<<16;
-
-//	Dlyms(8000);
 
 }
 
@@ -215,28 +132,11 @@ void FTM3_init_40MHZ(void)
 
 	FTM3->SC |= FTM_SC_CLKS(FTM_IN_CLOCK);//选择时钟源
 
-
- //   S32_NVIC->ISER[(uint32_t)(122) >> 5U] = (uint32_t)(1UL << ((uint32_t)(122) & (uint32_t)0x1FU));
-
-// 	pr_NVIC_ISER[122/32]=0x01<<(122%32);
+ 	pr_NVIC_ISER[122/32]=0x01<<(122%32);
 
 
 }
 
-int self_add(void)
-{
-	static char tmp=0;
-	char i=0;
-	__asm volatile(
-	"mov r1,%0\n"
-	"add r1,r1,#1\n"
-	"mov %0,r1\n"
-	:"+r"(tmp)
-
-	);
-
-	return tmp;
-}
 
 void HardFault_Handler(void)
 {
@@ -245,307 +145,38 @@ void HardFault_Handler(void)
 }
 
 
-
-
 void FTM3_Ovf_Reload_IRQHandler (void)
 {
-
-
 	FTM3->SC &= ~FTM_SC_TOF_MASK; //清除中断标志
-
 	
 }
 
 
 
-void taska() {
-
-    while (1) {
-
-    	int i=0;
-//    	for(i=0;i<0xffff;i++)
-    	{
-    	while(0);
-
-    	}
-	
-   task_blink_red();
-
-
-
-	Dlymsa(2000);
-
-
-
-
-	__asm volatile
-	(
-	"mrs r0,psp\n"
-	"mov %0,r0\n"
-	:"+r"(addr_psp)
-	);
-
-	if((addr_psp&0xf000)==0x2000)
+void taska(void) 
+{
+	while (1) 
 	{
-		while(1);
+		task_blink_red();
+		Dlyms(2000);
 	}
 
+}
 
-
-	if((((uint32_t)taskA.pTopOfStack)&0xf000)==0x2000)
+void taskb(void) 
+{
+    while (1) 
 	{
-		while(1);
-	}
-	if((((uint32_t)taskB.pTopOfStack)&0xf000)==0x1000)
-	{
-		while(1);
-	}
-
+		task_blink_green();
+		Dlyms(2000);
     }
 }
-
-void taskb() {
-    while (1) {
-
-	int i=0;
-//	for(i=0;i<0xffff;i++)
-	{
-		while(0);
-	}
-
-	__asm volatile
-	(
-	"mrs r0,psp\n"
-	"mov %0,r0\n"
-	:"+r"(addr_psp)
-	);
-
-	if((addr_psp&0xf000)==0x1000)
-	{
-		while(1);
-	}
-
-	if((((uint32_t)taskB.pTopOfStack)&0xf000)==0x1000)
-	{
-		while(1);
-	}
-	if((((uint32_t)taskA.pTopOfStack)&0xf000)==0x2000)
-	{
-		while(1);
-	}
-
-        task_blink_green();
-
-	Dlymsb(2000);
-
-    }
-}
-
-int test_asm(char x,char y,char z)
-{
-	char valx=0;
-	char valy=0,valz=0;
-	int buf[4];
-	int *pr=buf;
-	uint32_t val_pr;
-
-	val_pr=(int)pr;
-#if 1
-		__asm volatile(
-		"str r0,[%0]\n"
-		"add %0,%0,0x04\n"
-
-		"str r1,[%0]\n"
-		"add %0,%0,0x04\n"
-
-		"str r2,[%0]\n"
-		"add %0,%0,0x04\n"
-
-
-		:"+r"(pr)
-		);
-	
-#endif
-
-			return 0xff;
-}
-
-void PendSV_Handler(void)
-{
-	SCB_ICSR=(0x01<<27);
-	while(0);
-
-}
-
-void SysTick_Handler1(void)
-{
-
-
-	SCB_ICSR=0x01<<25;
-
-	while(0);
-
-
-if(gp_xtos_cur_task->saved==1)
-{
-	__asm volatile
-	(
-	"mrs r0,psp\n"
-	
-	"subs r0,r0,#0x04\n"
-	"str r11,[r0]\n"
-
-
-	"subs r0,r0,#0x04\n"
-	"str r10,[r0]\n"
-
-	"subs r0,r0,#0x04\n"
-	"str r9,[r0]\n"
-
-	"subs r0,r0,#0x04\n"
-	"str r8,[r0]\n"
-
-	"subs r0,r0,#0x04\n"
-	"str r7,[r0]\n"
-
-	"subs r0,r0,#0x04\n"
-	"str r6,[r0]\n"
-
-
-	"subs r0,r0,#0x04\n"
-	"str r5,[r0]\n"
-
-	"subs r0,r0,#0x04\n"
-	"str r4,[r0]\n"
-
-	);
-
-	__asm volatile
-	(
-
-	"mov %0,r0\n"
-	:"+r"(gp_xtos_cur_task->pTopOfStack)
-	);
-
-    if (gp_xtos_cur_task == &taskA)
-    {
-        gp_xtos_cur_task = &taskB;
-    }
-    else
-    {
-        gp_xtos_cur_task = &taskA;
-    }
-	if(taskA.pTopOfStack!=taskB.pTopOfStack)
-	{
-		count_sp++;
-	}
-
-}
-else
-{
-
-	taskA.saved=1;
-	taskB.saved=1;
-
-}
-
-
-#if 1
-__asm volatile
-(
-"mov r0,%0\n"
-:"+r"(gp_xtos_cur_task->pTopOfStack)
-);
-
-
-__asm volatile
-(
-	"ldr r4,[r0]\n"
-	"add r0,r0,0x04\n"
-
-	"ldr r5,[r0]\n"
-	"add r0,r0,0x04\n"
-
-	"ldr r6,[r0]\n"
-	"add r0,r0,0x04\n"
-
-//	"ldr r7,[r0]\n"
-	"add r0,r0,0x04\n"
-
-
-	"ldr r8,[r0]\n"
-	"add r0,r0,0x04\n"
-
-
-	"ldr r9,[r0]\n"
-	"add r0,r0,0x04\n"
-
-
-	"ldr r10,[r0]\n"
-	"add r0,r0,0x04\n"
-
-
-	"ldr r11,[r0]\n"
-	"add r0,r0,0x04\n"
-
-#if 1
-	"msr psp,r0\n"			//更新psp栈指针
-	"isb\n"
-//	"mov r7,r0\n"
-	"orr lr,lr,#0x04\n"
-	"isb\n"
-#else
-//	"pop {r7}\n"
-	//"mov r7,#0\n"
-//	"mrs r7,psp\n"
-
-		"mov     sp, r7\n"
-		"ldr.w   r7, [sp], #4\n"
-
-		
-		"msr psp,r0\n"			//更新psp栈指针
-		"isb\n"
-	//	"mov r7,r0\n"
-		"orr lr,lr,#0x04\n"
-		"isb\n"
-
-//		bx      lr
-	"mrs r7,psp\n"
-
-	"bx r14\n"
-	".align 4\n"
-#endif	
-);
-
-
-__asm volatile
-(
-"nop\n"
-);
-
-
-#endif	
-
-}
-
-
 
 
 int main(void) 
 {
 
-#if 1
-#if 0
-	__asm volatile
-	(
-	"mov r0,%0\n"
-	"mov r1,#0xff\n"
-	"str r1,[r0]\n"
-	:"+r"(gSCB_SHP14)
-	//:"+r"(gPENDSV_PRI)
-	);
-#endif
-
+	DISABLE_INTERRUPTS();
 	__asm volatile
 	(
 	"msr psp,%0\n"
@@ -555,9 +186,7 @@ int main(void)
 	"isb\n"
 	:"+r"(pr_taskA)
 	);
-#endif
 
-  DISABLE_INTERRUPTS();
   WDOG_disable();
   SOSC_init_8MHz();       /* Initialize system oscillator for 8 MHz xtal */
   SPLL_init_160MHz();     /* Initialize SPLL to 160 MHz with 8 MHz SOSC */
@@ -574,36 +203,16 @@ int main(void)
   xtos_start();
 
 
-
-	SCB_SHPR3=0xff<<16;
-
-
-	SYST_RVR=160000;
-	SYST_CVR=0;
-
-	SYST_CSR=(0x01<<2)|(0x01<<1);
-	SYST_CSR=SYST_CSR&(~(0x01<<0));
-
-	SCB_SHPR3=0x01<<24;
-
-	SYST_CSR=SYST_CSR|0x01;
-	
-
-
   int i=0;
 
   
   for (;;) {                        /* Loop: if a msg is received, transmit a msg */
 
-
-#if 1
- // i=test_asm(3,4,5);
-	  i=OSTest(i);
+	i=OSTest(i);
 	if(i!=0)
 	{
 
 	}
-#endif
 
   }
 }

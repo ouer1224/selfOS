@@ -2,6 +2,7 @@
 #include <stdint.h>
 #include "task.h"
 
+#include "cortex_m4_register.h"
 
 
 
@@ -18,11 +19,23 @@ volatile struct  xtos_task_struct  *gp_xtos_next_task;
 void xtos_start (void)
 {
 
+	SCB_SHPR3=0xff<<16;
+
+	SYST_RVR=160000;
+	SYST_CVR=0;
+
+	SYST_CSR=(0x01<<2)|(0x01<<1);
+	SYST_CSR=SYST_CSR&(~(0x01<<0));
+
+	SCB_SHPR3=0x01<<24;
+
+	SYST_CSR=SYST_CSR|0x01;
+
 }
 
 
 void xtos_distroy_task() {
-    // to do...
+
     while(1){}
 }
 
