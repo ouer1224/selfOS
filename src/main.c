@@ -192,7 +192,7 @@ void FTM3_init_40MHZ(void)
 	FTM3->COMBINE = 0x00000000;//DECAPENx, MCOMBINEx, COMBINEx=0
 	FTM3->POL = 0x00000000; //设置通道输出的极性
 	FTM3->CNTIN = 0;
-	FTM3->MOD = 625-1;//2560 - 1; //设置计数器终止值 配置中断时间  10ms
+	FTM3->MOD = 62500-1;//2560 - 1; //设置计数器终止值 配置中断时间  10ms
 	/* FTM3 Period = MOD-CNTIN+0x0001 ~= 2 ctr clks  */
 
 	FTM3->SC |= FTM_SC_CLKS(FTM_IN_CLOCK);//选择时钟源
@@ -200,7 +200,7 @@ void FTM3_init_40MHZ(void)
 
  //   S32_NVIC->ISER[(uint32_t)(122) >> 5U] = (uint32_t)(1UL << ((uint32_t)(122) & (uint32_t)0x1FU));
 
- //	pr_NVIC_ISER[122/32]=0x01<<(122%32);
+ 	pr_NVIC_ISER[122/32]=0x01<<(122%32);
 
 
 }
@@ -235,6 +235,8 @@ void FTM3_Ovf_Reload_IRQHandler (void)
 
 
 	FTM3->SC &= ~FTM_SC_TOF_MASK; //清除中断标志
+
+	SCB_ICSR=(0x01<<28);
 
 	
 }
@@ -277,7 +279,7 @@ void taska() {
 	{
 		while(1);
 	}
-		SCB_ICSR=(0x01<<28);
+//		SCB_ICSR=(0x01<<28);
 
     }
 }
@@ -315,7 +317,7 @@ void taskb() {
         task_blink_green();
 		Dlymsb(1);
 
-			SCB_ICSR=(0x01<<28);
+//			SCB_ICSR=(0x01<<28);
     }
 }
 
