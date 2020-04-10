@@ -133,3 +133,34 @@ context_switch_load_senario
 	END
 
 #endif
+
+
+
+
+
+
+
+
+
+
+/*-----------------------------------------------------------------------------------------------------*/
+
+.text
+.align 2
+.thumb
+.syntax unified
+
+//export     OSTest
+
+.thumb_func
+OSTest:
+	nop
+	nop
+	add r0,r0,#1
+	bx lr
+
+
+
+
+
+

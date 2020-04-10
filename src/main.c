@@ -19,7 +19,7 @@
 #define DISABLE_INTERRUPTS() __asm volatile ("cpsid i" : : : "memory")
 #define ENABLE_INTERRUPTS() __asm volatile ("cpsie i" : : : "memory")
 
-
+extern int OSTest(int);
 
 #define TASKA_STK_SIZE 1024
 #define TASKB_STK_SIZE 1024
@@ -28,12 +28,54 @@ static unsigned int taskB_Stk[TASKB_STK_SIZE];
 static unsigned int taskC_Stk[TASKB_STK_SIZE];
 static unsigned int taskD_Stk[TASKB_STK_SIZE];
 
+volatile unsigned int * gSCB_SHP14=(void *)0xE000ED22,*gSCB_ICSR=0xE000ED04;
+unsigned int gPENDSV_PRI=0xFF;
 
 uint32_t *pr_taskA=taskB_Stk+TASKA_STK_SIZE-1;
+
+
 uint32_t count_sp=0;
+
+uint32_t addr_psp=0;
 
 static  volatile struct xtos_task_struct taskA;
 static volatile struct xtos_task_struct taskB;
+
+
+#define SYSHND_CTRL (*(volatile unsigned int*)  (0xE000ED24u))
+// Memory Management Fault Status Register
+#define NVIC_MFSR   (*(volatile unsigned char*) (0xE000ED28u))
+// Bus Fault Status Register
+#define NVIC_BFSR   (*(volatile unsigned char*) (0xE000ED29u))
+// Usage Fault Status Register
+#define NVIC_UFSR   (*(volatile unsigned short*)(0xE000ED2Au))
+// Hard Fault Status Register
+#define NVIC_HFSR   (*(volatile unsigned int*)  (0xE000ED2Cu))
+// Debug Fault Status Register
+#define NVIC_DFSR   (*(volatile unsigned int*)  (0xE000ED30u))
+// Bus Fault Manage Address Register
+#define NVIC_BFAR   (*(volatile unsigned int*)  (0xE000ED38u))
+// Auxiliary Fault Status Register
+#define NVIC_AFSR   (*(volatile unsigned int*)  (0xE000ED3Cu))
+
+#define SCB_ICSR   (*(volatile unsigned int*)  (0xE000ED04))
+#define SCB_SHPR3	(*(volatile unsigned int*)  (0xE000ED20))
+
+
+
+
+#define pr_NVIC_ISER   ((volatile unsigned int*)  (0xE000E100))
+#define pr_NVIC_ICER   ((volatile unsigned int*)  (0xE000E180))
+
+#define pr_NVIC_ISPR   ((volatile unsigned int*)  (0xE000E200))
+#define pr_NVIC_ICPR   ((volatile unsigned int*)  (0xE000E280))
+
+#define pr_NVIC_IABR   ((volatile unsigned int*)  (0xE000E300))
+
+#define pr_NVIC_IPR   ((volatile unsigned int*)  (0xE000E400))
+
+
+
 
 void task_switch() {
     if (gp_xtos_cur_task == &taskA)
@@ -68,12 +110,34 @@ void PORT_init (void) {
 void Dlyms(int tick) {
     int i,j,k=0;
 
+    for (i=0;i<2000;i++) {
+        for (j=0;j<300;j++) {
+            k++;
+        }
+    }
+}
+
+
+void Dlymsa(int tick) {
+    int i,j,k=0;
+
     for (i=0;i<tick;i++) {
         for (j=0;j<300;j++) {
             k++;
         }
     }
 }
+
+void Dlymsb(int tick) {
+    int i,j,k=0;
+
+    for (i=0;i<tick;i++) {
+        for (j=0;j<300;j++) {
+            k++;
+        }
+    }
+}
+
 #define __SRAM_BASE_ADDR		0x1FFF8000
 #define __SRAM_SIZE				0x0000F000
 
@@ -134,7 +198,9 @@ void FTM3_init_40MHZ(void)
 	FTM3->SC |= FTM_SC_CLKS(FTM_IN_CLOCK);//选择时钟源
 
 
-    S32_NVIC->ISER[(uint32_t)(122) >> 5U] = (uint32_t)(1UL << ((uint32_t)(122) & (uint32_t)0x1FU));
+ //   S32_NVIC->ISER[(uint32_t)(122) >> 5U] = (uint32_t)(1UL << ((uint32_t)(122) & (uint32_t)0x1FU));
+
+ 	pr_NVIC_ISER[122/32]=0x01<<(122%32);
 
 
 }
@@ -154,12 +220,33 @@ int self_add(void)
 	return tmp;
 }
 
+void HardFault_Handler(void)
+{
+	static char conti=1;
+	while(conti);
+}
+
+
 
 
 void FTM3_Ovf_Reload_IRQHandler (void)
 {
 
+
 	FTM3->SC &= ~FTM_SC_TOF_MASK; //清除中断标志
+#if 0
+	__asm volatile
+	(
+	"mov r0,gSCB_ICSR\n"
+	"mov r1,#0x10000000\n"
+	"str r1,[r0]\n"
+	:"+r"(gSCB_ICSR)
+	);
+#endif
+
+	SCB_ICSR=(0x01<<28);
+
+
 
 if(gp_xtos_cur_task->saved==1)
 {
@@ -263,11 +350,33 @@ __asm volatile
 	"ldr r11,[r0]\n"
 	"add r0,r0,0x04\n"
 
-
+#if 1
 	"msr psp,r0\n"			//更新psp栈指针
+	"isb\n"
 //	"mov r7,r0\n"
 	"orr lr,lr,#0x04\n"
+	"isb\n"
+#else
+//	"pop {r7}\n"
+	//"mov r7,#0\n"
+//	"mrs r7,psp\n"
 
+		"mov     sp, r7\n"
+		"ldr.w   r7, [sp], #4\n"
+
+		
+		"msr psp,r0\n"			//更新psp栈指针
+		"isb\n"
+	//	"mov r7,r0\n"
+		"orr lr,lr,#0x04\n"
+		"isb\n"
+
+//		bx      lr
+	"mrs r7,psp\n"
+
+	"bx r14\n"
+	".align 4\n"
+#endif	
 );
 
 
@@ -285,21 +394,77 @@ __asm volatile
 
 
 void taska() {
+
     while (1) {
 
+    	int i=0;
+    	for(i=0;i<0xffff;i++)
+    	{
+    	while(0);
+
+    	}
 	
    task_blink_red();
-	Dlyms(2000);
+	Dlymsa(1);
 
-	
+	__asm volatile
+	(
+	"mrs r0,psp\n"
+	"mov %0,r0\n"
+	:"+r"(addr_psp)
+	);
+
+	if((addr_psp&0xf000)==0x2000)
+	{
+		while(1);
+	}
+
+
+
+	if((((uint32_t)taskA.pTopOfStack)&0xf000)==0x2000)
+	{
+		while(1);
+	}
+	if((((uint32_t)taskB.pTopOfStack)&0xf000)==0x1000)
+	{
+		while(1);
+	}
 
     }
 }
 
 void taskb() {
     while (1) {
+
+	int i=0;
+	for(i=0;i<0xffff;i++)
+	{
+		while(0);
+	}
+
+	__asm volatile
+	(
+	"mrs r0,psp\n"
+	"mov %0,r0\n"
+	:"+r"(addr_psp)
+	);
+
+	if((addr_psp&0xf000)==0x1000)
+	{
+		while(1);
+	}
+
+	if((((uint32_t)taskB.pTopOfStack)&0xf000)==0x1000)
+	{
+		while(1);
+	}
+	if((((uint32_t)taskA.pTopOfStack)&0xf000)==0x2000)
+	{
+		while(1);
+	}
+
         task_blink_green();
-		Dlyms(2000);
+		Dlymsb(1);
     }
 }
 
@@ -332,10 +497,32 @@ int test_asm(char x,char y,char z)
 			return 0xff;
 }
 
+void PendSV_Handler(void)
+{
+	SCB_ICSR=(0x01<<27);
+	while(0);
+
+}
+
+
+
+
+
 
 int main(void) 
 {
 
+#if 1
+#if 0
+	__asm volatile
+	(
+	"mov r0,%0\n"
+	"mov r1,#0xff\n"
+	"str r1,[r0]\n"
+	:"+r"(gSCB_SHP14)
+	//:"+r"(gPENDSV_PRI)
+	);
+#endif
 
 	__asm volatile
 	(
@@ -343,9 +530,10 @@ int main(void)
 	"mrs r0,control\n"
 	"orr r0,r0,#0x02\n"
 	"msr control,r0\n"
+	"isb\n"
 	:"+r"(pr_taskA)
 	);
-
+#endif
 
   DISABLE_INTERRUPTS();
   WDOG_disable();
@@ -354,10 +542,6 @@ int main(void)
   NormalRUNmode_80MHz();  /* Init clocks: 80 MHz sysclk & core, 40 MHz bus, 20 MHz flash */
   FTM3_init_40MHZ();
   PORT_init();             /* Configure ports */
-  
-
-  
-
 
   xtos_create_task(&taskA, taska, &taskC_Stk[TASKA_STK_SIZE - 1]);  
   xtos_create_task(&taskB, taskb, &taskD_Stk[TASKA_STK_SIZE - 1]);  
@@ -367,14 +551,20 @@ int main(void)
   ENABLE_INTERRUPTS();
   xtos_start();
 
-	int i=0;
+
+
+	SCB_SHPR3=0xff<<16;
+
+
+  int i=0;
+
   
   for (;;) {                        /* Loop: if a msg is received, transmit a msg */
 
 
 #if 1
  // i=test_asm(3,4,5);
-	  i++;
+//	  OSTest(i);
 	if(i!=0)
 	{
 

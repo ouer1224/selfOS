@@ -331,6 +331,7 @@ Reset_Handler:
     ldr     r0,=__StackTop	/*__StackTop是栈顶的内存位置,其不是lable,是一个具体的数值,存放在地址0的位置*/
     mov     r13,r0	/*r13为sp栈寄存器,此处是将存储在地址0的栈顶地址放入到r13中.*/
 
+
 #ifndef __NO_SYSTEM_INIT
     /* Call the system init routine */
     ldr     r0,=SystemInit	/*将systeminit函数的地址放入r0中,然后跳转过去*/
@@ -341,6 +342,21 @@ Reset_Handler:
     ldr     r0,=init_data_bss
     blx     r0
     cpsie   i               /* Unmask interrupts */
+
+#if 0
+//	ldr r1,=pr_taskA
+	mrs r0,msp
+	msr psp,r0
+	mrs r0,control
+	orr r0,r0,#0x02
+	msr control,r0
+	ldr r1,=pr_handle
+	ldr r0,[r1]
+	msr msp,r0
+
+	isb
+#endif
+
     bl      main
 JumpToSelf:
     b       JumpToSelf
