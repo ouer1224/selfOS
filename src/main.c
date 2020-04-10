@@ -129,7 +129,7 @@ void Dlyms(int tick) {
 void Dlymsa(int tick) {
     int i,j,k=0;
 
-	ENABLE_INTERRUPTS();
+
 
     for (i=0;i<tick;i++) {
         for (j=0;j<300;j++) {
@@ -137,7 +137,7 @@ void Dlymsa(int tick) {
         }
     }
 
-		DISABLE_INTERRUPTS(); 
+
 
 }
 
@@ -145,7 +145,7 @@ void Dlymsb(int tick) {
     int i,j,k=0;
 
 	
-	ENABLE_INTERRUPTS();
+
 
     for (i=0;i<tick;i++) {
         for (j=0;j<300;j++) {
@@ -153,7 +153,7 @@ void Dlymsb(int tick) {
         }
     }
 
-		DISABLE_INTERRUPTS(); 
+
 }
 
 #define __SRAM_BASE_ADDR		0x1FFF8000
@@ -270,9 +270,13 @@ void taska() {
     	}
 	
    task_blink_red();
-	  DISABLE_INTERRUPTS();	
+
+
+
 	Dlymsa(2000);
-	ENABLE_INTERRUPTS();
+
+
+
 
 	__asm volatile
 	(
