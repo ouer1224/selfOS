@@ -20,6 +20,7 @@
 #define ENABLE_INTERRUPTS() __asm volatile ("cpsie i" : : : "memory")
 
 extern int OSTest(int);
+extern void SysTick_Handler(void);
 
 #define TASKA_STK_SIZE 1024
 #define TASKB_STK_SIZE 1024
@@ -38,8 +39,8 @@ uint32_t count_sp=0;
 
 uint32_t addr_psp=0;
 
-static  volatile struct xtos_task_struct taskA;
-static volatile struct xtos_task_struct taskB;
+volatile struct xtos_task_struct taskA;
+volatile struct xtos_task_struct taskB;
 
 
 #define SYSHND_CTRL (*(volatile unsigned int*)  (0xE000ED24u))
@@ -372,7 +373,7 @@ void PendSV_Handler(void)
 
 }
 
-void SysTick_Handler(void)
+void SysTick_Handler1(void)
 {
 
 
