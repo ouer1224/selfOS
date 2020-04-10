@@ -31,6 +31,16 @@ void xtos_start (void)
 
 	SYST_CSR=SYST_CSR|0x01;
 
+	__asm volatile
+	(
+	"mov r0,#0\n"
+	"msr psp,r0\n"
+			//"mrs r0,control\n"
+			//"orr r0,r0,#0x02\n"
+			//"msr control,r0\n"
+	"isb\n"
+	);
+
 }
 
 
@@ -83,7 +93,6 @@ void xtos_create_task(struct xtos_task_struct * tcb, xtos_task task, uint32 * st
     *(--pstk) = (uint32)0x04040404uL; // R4
 
     tcb->pTopOfStack = pstk;
-	tcb->saved=0;
 }
 
 /*获取下一个任务的tcb指针*/

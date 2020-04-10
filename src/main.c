@@ -177,15 +177,7 @@ int main(void)
 {
 
 	DISABLE_INTERRUPTS();
-	__asm volatile
-	(
-	"msr psp,%0\n"
-	"mrs r0,control\n"
-	"orr r0,r0,#0x02\n"
-	"msr control,r0\n"
-	"isb\n"
-	:"+r"(pr_taskA)
-	);
+
 
   WDOG_disable();
   SOSC_init_8MHz();       /* Initialize system oscillator for 8 MHz xtal */

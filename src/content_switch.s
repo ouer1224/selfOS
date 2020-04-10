@@ -29,26 +29,28 @@ SysTick_Handler:
 	ldr r0,=#0xE000ED04
 	ldr r1,=#0x1000000
 	str r1,[r0]
+
+	mrs r0,psp
+	cbnz r0,content_save
+	
+	mrs r1,control	//设置psp和msp
+	orr r1,r1,#0x02
+	msr control,r1
+	
 content_save:
 
-	ldr r2,=gp_xtos_cur_task
-	ldr r1,[r2]
-	add r3,r1,#4	//saved flag address
-	ldr r0,[r3]		//saved flag
+	mrs r0,psp
 	cbz r0,content_load
 
-	
-//	ldr r0,[r1]		//stack address
 
 	mrs r0,psp		//read psp addr
 	subs r0,r0,#0x20
 	stm  r0,{r4-r11}
 
+	ldr r2,=gp_xtos_cur_task
+	ldr r1,[r2]		//获取到当前任务放栈地址的空间地址
+
 	str r0,[r1]		//save new stack addr
-
-
-
-
 
 /*在中断中,lr代表的不是返回地址.由于调用c函数,在进入子函数后,lr会发生变化,变为当前的位置.即使从子函数退出后,也不会变回来.因此在进入子函数前,lr需要保存一下*/
 	mov r0,lr
@@ -57,16 +59,6 @@ content_save:
 	mov lr,r0
 
 content_load:
-
-	ldr r0,=taskA
-	add r0,r0,#4
-	mov r1,#1
-	str r1,[r0]
-	ldr r0,=taskB
-	add r0,r0,#4
-	mov r1,#1
-	str r1,[r0]
-
 
 	ldr r0,=gp_xtos_cur_task
 	ldr r0,[r0]
@@ -84,6 +76,7 @@ content_load:
 	bx lr
 
 	nop
+
 
 
 OSTest:
