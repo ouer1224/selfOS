@@ -53,6 +53,7 @@ content_save:
 	sub r0,r3,r2
 	cbz r0,slect_tasb
 	str r2,[r1]
+	b content_load
 slect_tasb:
 	ldr r2,=taskB
 	str r2,[r1]
