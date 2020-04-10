@@ -198,6 +198,9 @@ int main(void)
   xtos_create_task(&taskB, taskb, &taskD_Stk[TASKA_STK_SIZE - 1]);  
 
   gp_xtos_cur_task = &taskA;
+
+  taskA.next=&taskB;
+  taskB.next=&taskA;
 	
   ENABLE_INTERRUPTS();
   xtos_start();

@@ -10,6 +10,7 @@
 struct xtos_task_struct {
     uint32 *pTopOfStack;   /* ’ª∂•µÿ÷∑ */
 	uint32 saved;
+	void * next;
 };
 typedef void(*xtos_task)(void);
 

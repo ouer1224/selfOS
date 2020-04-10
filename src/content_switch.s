@@ -13,6 +13,7 @@
  .extern OSTest
  .extern SysTick_Handler
 
+
 .text
 .balign 4
 .thumb
@@ -46,19 +47,17 @@ content_save:
 	str r0,[r1]		//save new stack addr
 
 
-	//switch task tcb
-	ldr r1,=gp_xtos_cur_task
-	ldr	r3,[r1]
-	ldr r2,=taskA
-	sub r0,r3,r2
-	cbz r0,slect_tasb
-	str r2,[r1]
-	b content_load
-slect_tasb:
-	ldr r2,=taskB
-	str r2,[r1]
+
+
+
+/*在中断中,lr代表的不是返回地址.由于调用c函数,在进入子函数后,lr会发生变化,变为当前的位置.即使从子函数退出后,也不会变回来.因此在进入子函数前,lr需要保存一下*/
+	mov r0,lr
+	ldr r1,=get_next_TCB
+	blx r1
+	mov lr,r0
 
 content_load:
+
 	ldr r0,=taskA
 	add r0,r0,#4
 	mov r1,#1
@@ -67,6 +66,7 @@ content_load:
 	add r0,r0,#4
 	mov r1,#1
 	str r1,[r0]
+
 
 	ldr r0,=gp_xtos_cur_task
 	ldr r0,[r0]
