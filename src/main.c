@@ -251,18 +251,134 @@ void FTM3_Ovf_Reload_IRQHandler (void)
 
 
 	FTM3->SC &= ~FTM_SC_TOF_MASK; //清除中断标志
-#if 0
+
+	
+}
+
+
+
+void taska() {
+
+    while (1) {
+
+    	int i=0;
+//    	for(i=0;i<0xffff;i++)
+    	{
+    	while(0);
+
+    	}
+	
+   task_blink_red();
+	  DISABLE_INTERRUPTS();	
+	Dlymsa(2000);
+	ENABLE_INTERRUPTS();
+
 	__asm volatile
 	(
-	"mov r0,gSCB_ICSR\n"
-	"mov r1,#0x10000000\n"
-	"str r1,[r0]\n"
-	:"+r"(gSCB_ICSR)
+	"mrs r0,psp\n"
+	"mov %0,r0\n"
+	:"+r"(addr_psp)
 	);
+
+	if((addr_psp&0xf000)==0x2000)
+	{
+		while(1);
+	}
+
+
+
+	if((((uint32_t)taskA.pTopOfStack)&0xf000)==0x2000)
+	{
+		while(1);
+	}
+	if((((uint32_t)taskB.pTopOfStack)&0xf000)==0x1000)
+	{
+		while(1);
+	}
+
+    }
+}
+
+void taskb() {
+    while (1) {
+
+	int i=0;
+//	for(i=0;i<0xffff;i++)
+	{
+		while(0);
+	}
+
+	__asm volatile
+	(
+	"mrs r0,psp\n"
+	"mov %0,r0\n"
+	:"+r"(addr_psp)
+	);
+
+	if((addr_psp&0xf000)==0x1000)
+	{
+		while(1);
+	}
+
+	if((((uint32_t)taskB.pTopOfStack)&0xf000)==0x1000)
+	{
+		while(1);
+	}
+	if((((uint32_t)taskA.pTopOfStack)&0xf000)==0x2000)
+	{
+		while(1);
+	}
+
+        task_blink_green();
+
+	Dlymsb(2000);
+
+    }
+}
+
+int test_asm(char x,char y,char z)
+{
+	char valx=0;
+	char valy=0,valz=0;
+	int buf[4];
+	int *pr=buf;
+	uint32_t val_pr;
+
+	val_pr=(int)pr;
+#if 1
+		__asm volatile(
+		"str r0,[%0]\n"
+		"add %0,%0,0x04\n"
+
+		"str r1,[%0]\n"
+		"add %0,%0,0x04\n"
+
+		"str r2,[%0]\n"
+		"add %0,%0,0x04\n"
+
+
+		:"+r"(pr)
+		);
+	
 #endif
 
-	SCB_ICSR=(0x01<<28);
+			return 0xff;
+}
 
+void PendSV_Handler(void)
+{
+	SCB_ICSR=(0x01<<27);
+	while(0);
+
+}
+
+void SysTick_Handler(void)
+{
+
+
+	SCB_ICSR=0x01<<25;
+
+	while(0);
 
 
 if(gp_xtos_cur_task->saved==1)
@@ -403,135 +519,7 @@ __asm volatile
 );
 
 
-#endif
-
-	
-}
-
-
-
-void taska() {
-
-    while (1) {
-
-    	int i=0;
-//    	for(i=0;i<0xffff;i++)
-    	{
-    	while(0);
-
-    	}
-	
-   task_blink_red();
-	  DISABLE_INTERRUPTS();	
-	Dlymsa(2000);
-	ENABLE_INTERRUPTS();
-
-	__asm volatile
-	(
-	"mrs r0,psp\n"
-	"mov %0,r0\n"
-	:"+r"(addr_psp)
-	);
-
-	if((addr_psp&0xf000)==0x2000)
-	{
-		while(1);
-	}
-
-
-
-	if((((uint32_t)taskA.pTopOfStack)&0xf000)==0x2000)
-	{
-		while(1);
-	}
-	if((((uint32_t)taskB.pTopOfStack)&0xf000)==0x1000)
-	{
-		while(1);
-	}
-
-    }
-}
-
-void taskb() {
-    while (1) {
-
-	int i=0;
-//	for(i=0;i<0xffff;i++)
-	{
-		while(0);
-	}
-
-	__asm volatile
-	(
-	"mrs r0,psp\n"
-	"mov %0,r0\n"
-	:"+r"(addr_psp)
-	);
-
-	if((addr_psp&0xf000)==0x1000)
-	{
-		while(1);
-	}
-
-	if((((uint32_t)taskB.pTopOfStack)&0xf000)==0x1000)
-	{
-		while(1);
-	}
-	if((((uint32_t)taskA.pTopOfStack)&0xf000)==0x2000)
-	{
-		while(1);
-	}
-
-        task_blink_green();
-
-	Dlymsb(2000);
-
-    }
-}
-
-int test_asm(char x,char y,char z)
-{
-	char valx=0;
-	char valy=0,valz=0;
-	int buf[4];
-	int *pr=buf;
-	uint32_t val_pr;
-
-	val_pr=(int)pr;
-#if 1
-		__asm volatile(
-		"str r0,[%0]\n"
-		"add %0,%0,0x04\n"
-
-		"str r1,[%0]\n"
-		"add %0,%0,0x04\n"
-
-		"str r2,[%0]\n"
-		"add %0,%0,0x04\n"
-
-
-		:"+r"(pr)
-		);
-	
-#endif
-
-			return 0xff;
-}
-
-void PendSV_Handler(void)
-{
-	SCB_ICSR=(0x01<<27);
-	while(0);
-
-}
-
-void SysTick_Handler(void)
-{
-
-
-	SCB_ICSR=0x01<<25;
-
-	while(0);
+#endif	
 
 }
 
@@ -605,7 +593,7 @@ int main(void)
 
 #if 1
  // i=test_asm(3,4,5);
-//	  OSTest(i);
+	  i=OSTest(i);
 	if(i!=0)
 	{
 

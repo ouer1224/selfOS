@@ -145,8 +145,13 @@ context_switch_load_senario
 
 /*-----------------------------------------------------------------------------------------------------*/
 
+.global OSTest
+.type   OSTest, function
+
+ .extern OSTest
+
 .text
-.align 2
+.balign 4
 .thumb
 .syntax unified
 
@@ -158,6 +163,8 @@ OSTest:
 	nop
 	add r0,r0,#1
 	bx lr
+
+	.end
 
 
 
