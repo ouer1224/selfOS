@@ -44,8 +44,38 @@ content_save:
 
 
 	mrs r0,psp		//read psp addr
+
+#if 0	
 	subs r0,r0,#0x20
 	stm  r0,{r4-r11}
+#else
+
+	subs r0,r0,#4
+	str r11,[r0]
+
+	subs r0,r0,#4
+	str r10,[r0]
+
+	subs r0,r0,#4
+	str r9,[r0]
+
+	subs r0,r0,#4
+	str r8,[r0]
+
+	subs r0,r0,#4
+	str r7,[r0]
+
+	subs r0,r0,#4
+	str r6,[r0]
+
+	subs r0,r0,#4
+	str r5,[r0]
+
+	subs r0,r0,#4
+	str r4,[r0]
+
+
+#endif
 
 	ldr r2,=gp_xtos_cur_task
 	ldr r1,[r2]		//获取到当前任务放栈地址的空间地址
@@ -63,9 +93,35 @@ content_load:
 	ldr r0,=gp_xtos_cur_task
 	ldr r0,[r0]
 	ldr r0,[r0]		//get the cur task stack
-
+#if 0
 	ldm r0,{r4-r11}
 	adds r0,r0,#0x20
+#else
+	ldr r4,[r0]
+	add r0,r0,#4
+	
+	ldr r5,[r0]
+	add r0,r0,#4
+
+	ldr r6,[r0]
+	add r0,r0,#4
+
+	ldr r7,[r0]
+	add r0,r0,#4
+
+	ldr r8,[r0]
+	add r0,r0,#4
+
+	ldr r9,[r0]
+	add r0,r0,#4
+
+	ldr r10,[r0]
+	add r0,r0,#4
+
+	ldr r11,[r0]
+	add r0,r0,#4
+
+#endif
 
 	msr psp,r0
 	orr lr,lr,#0x04
