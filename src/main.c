@@ -1,11 +1,8 @@
 /* main.c                              Copyright NXP 2016
- * Description: Simple CAN 2.0 transmit / receive at 500 K baud
- *              for S32K144
- * 2016 Jul 22 S. Mihalik - Initial version
- * 2016 Sep 12 SM - Updated with SBC init, Node A - B communication
- * 2016 Oct 31 SM- Clocks adjusted for 160 MHz SPLL, updated loop logic
- * 2017 Jul 03 SM- Removed code for: MC33903 on obsolete EVB,
- *                 initial transmit for node B, tx_msg_count
+
+
+
+
  */
 
 #include "S32K144.h" /* include peripheral declarations S32K144 */
@@ -26,10 +23,15 @@ extern void SysTick_Handler(void);
 
 #define TASKA_STK_SIZE 1024
 #define TASKB_STK_SIZE 1024
-//static unsigned int taskA_Stk[TASKA_STK_SIZE];
+
+
+
 static unsigned int taskB_Stk[TASKB_STK_SIZE];
 static unsigned int taskC_Stk[TASKB_STK_SIZE];
 static unsigned int taskD_Stk[TASKB_STK_SIZE];
+static unsigned int taskE_Stk[TASKB_STK_SIZE];
+
+
 
 volatile unsigned int * gSCB_SHP14=(void *)0xE000ED22,*gSCB_ICSR=0xE000ED04;
 unsigned int gPENDSV_PRI=0xFF;
@@ -41,9 +43,10 @@ uint32_t count_sp=0;
 
 uint32_t addr_psp=0;
 
-volatile struct xtos_task_struct taskA;
-volatile struct xtos_task_struct taskB;
 
+volatile struct mdos_task_struct taskA;
+volatile struct mdos_task_struct taskB;
+volatile struct mdos_task_struct taskC;
 
 
 
@@ -59,11 +62,17 @@ void PORT_init (void) {
   PORTE->PCR[4] |= PORT_PCR_MUX(5); /* Port E4: MUX = ALT5, CAN0_RX */
   PORTE->PCR[5] |= PORT_PCR_MUX(5); /* Port E5: MUX = ALT5, CAN0_TX */
   PCC->PCCn[PCC_PORTD_INDEX ]|=PCC_PCCn_CGC_MASK;   /* Enable clock for PORTD */
+
+  
   PORTD->PCR[15] =  0x00000100;     /* Port D16: MUX = GPIO (to green LED) */
   PTD->PDDR |= 1<<15;               /* Port D16: Data direction = output */
 
   PORTD->PCR[16] =  0x00000100;     /* Port D16: MUX = GPIO (to green LED) */
   PTD->PDDR |= 1<<16;               /* Port D16: Data direction = output */
+
+  PORTD->PCR[0] =  0x00000100;     /* Port D16: MUX = GPIO (to green LED) */
+  PTD->PDDR |= 1<<0;               /* Port D16: Data direction = output */
+
 
 
 }
@@ -110,6 +119,14 @@ void task_blink_green(void)
 	PTD->PTOR |= 1<<16;
 
 }
+void task_blink_blue(void)
+{
+
+	PTD->PTOR |= 1<<0;
+
+}
+
+
 
 #define FTM_IN_CLOCK	(0x01)
 void FTM3_init_40MHZ(void)
@@ -153,6 +170,7 @@ void FTM3_Ovf_Reload_IRQHandler (void)
 
 
 
+
 void taska(void) 
 {
 	while (1) 
@@ -167,10 +185,22 @@ void taskb(void)
 {
     while (1) 
 	{
+		Dlyms(3000);
 		task_blink_green();
-		Dlyms(2000);
+		
     }
 }
+void taskc(void) 
+{
+    while (1) 
+	{
+		Dlyms(4000);
+		task_blink_blue();
+		Dlyms(1000);
+    }
+}
+
+
 
 
 int main(void) 
@@ -179,23 +209,30 @@ int main(void)
 	DISABLE_INTERRUPTS();
 
 
-  WDOG_disable();
-  SOSC_init_8MHz();       /* Initialize system oscillator for 8 MHz xtal */
-  SPLL_init_160MHz();     /* Initialize SPLL to 160 MHz with 8 MHz SOSC */
-  NormalRUNmode_80MHz();  /* Init clocks: 80 MHz sysclk & core, 40 MHz bus, 20 MHz flash */
-  FTM3_init_40MHZ();
-  PORT_init();             /* Configure ports */
+	WDOG_disable();
+	SOSC_init_8MHz();       /* Initialize system oscillator for 8 MHz xtal */
+	SPLL_init_160MHz();     /* Initialize SPLL to 160 MHz with 8 MHz SOSC */
+	NormalRUNmode_80MHz();  /* Init clocks: 80 MHz sysclk & core, 40 MHz bus, 20 MHz flash */
+	FTM3_init_40MHZ();
+	PORT_init();             /* Configure ports */
 
-  xtos_create_task(&taskA, taska, &taskC_Stk[TASKA_STK_SIZE - 1]);  
-  xtos_create_task(&taskB, taskb, &taskD_Stk[TASKA_STK_SIZE - 1]);  
 
-  gp_xtos_cur_task = &taskA;
+
+	mdos_create_task(&taskA, taska, &taskC_Stk[TASKA_STK_SIZE - 1]);  
+	mdos_create_task(&taskB, taskb, &taskD_Stk[TASKA_STK_SIZE - 1]);  
+	mdos_create_task(&taskC, taskc, &taskE_Stk[TASKA_STK_SIZE - 1]);
+
+
+
+#if 0
+  gp_mdos_cur_task = &taskA;
 
   taskA.next=&taskB;
-  taskB.next=&taskA;
-	
+  taskB.next=&taskC;
+  taskC.next=&taskA;
+#endif
   ENABLE_INTERRUPTS();
-  xtos_start();
+  mdos_start();
 
 
   int i=0;

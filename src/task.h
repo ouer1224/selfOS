@@ -6,23 +6,24 @@
 
 #define uint32	uint32_t
 
+#define NULL	(void *)0
 
-struct xtos_task_struct {
+struct mdos_task_struct {
     uint32 *pTopOfStack;   /* ’ª∂•µÿ÷∑ */
 	void * next;
 };
-typedef void(*xtos_task)(void);
+typedef void(*mdos_task)(void);
 
 
-extern volatile struct xtos_task_struct *gp_xtos_cur_task;
-extern volatile struct xtos_task_struct *gp_xtos_next_task;
+extern volatile struct mdos_task_struct *gp_mdos_cur_task;
+extern volatile struct mdos_task_struct *gp_mdos_next_task;
 
-void xtos_start(void);
-void xtos_context_switch(void);
-void xtos_pendsv_handler(void);
+void mdos_start(void);
+void mdos_context_switch(void);
+void mdos_pendsv_handler(void);
 
-void xtos_create_task(struct xtos_task_struct *tcb, xtos_task task, uint32 *stk);
-void xtos_distroy_task(void);
+void mdos_create_task(struct mdos_task_struct *tcb, mdos_task task, uint32 *stk);
+void mdos_distroy_task(void);
 
 
 #endif

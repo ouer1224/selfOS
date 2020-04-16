@@ -1,4 +1,9 @@
 
+
+
+/*mdos的含义是module os,可以通过修改接口的方式,对调度算法,内存管理,消息的传递*/
+
+
 #include <stdint.h>
 #include "task.h"
 
@@ -6,18 +11,39 @@
 
 
 
+volatile struct  mdos_task_struct  *gp_mdos_cur_task=NULL;
+volatile struct  mdos_task_struct  *gp_mdos_next_task=NULL;
 
-volatile struct  xtos_task_struct  *gp_xtos_cur_task;
-volatile struct  xtos_task_struct  *gp_xtos_next_task;
+volatile struct mdos_task_struct task_idle;
+static unsigned int task_idle_Stk[128];
+
+
 
 #define head_asm_frame		__asm volatile(
 #define tail_asm_frame		);
 
 
 
-
-void xtos_start (void)
+void taskidle(void)
 {
+
+    while(1){
+    	__asm
+		("nop\n");
+    }
+
+}
+
+
+
+void mdos_start (void)
+{
+
+	//添加idle任务
+	mdos_create_task(&task_idle,taskidle,&task_idle_Stk[128 - 1]);
+
+
+
 
 	SCB_SHPR3=0xff<<16;
 
@@ -31,26 +57,27 @@ void xtos_start (void)
 
 	SYST_CSR=SYST_CSR|0x01;
 
-	__asm volatile
+	__asm volatile	//将psp设置为0,表示是第一次切换上下文.
 	(
 	"mov r0,#0\n"
 	"msr psp,r0\n"
-			//"mrs r0,control\n"
-			//"orr r0,r0,#0x02\n"
-			//"msr control,r0\n"
 	"isb\n"
 	);
 
 }
 
 
-void xtos_distroy_task() {
+void mdos_distroy_task() {
 
-    while(1){}
+    while(1){
+    	__asm
+		("nop\n");
+    }
 }
 
 
-void xtos_create_task(struct xtos_task_struct * tcb, xtos_task task, uint32 * stk) {
+void mdos_create_task(struct mdos_task_struct * tcb, mdos_task task, uint32 * stk) 
+{
     uint32  *pstk;
     pstk = stk;
     pstk = (uint32 *)((uint32)(pstk) & 0xFFFFFFF8uL);
@@ -74,9 +101,10 @@ void xtos_create_task(struct xtos_task_struct * tcb, xtos_task task, uint32 * st
     *(--pstk) = (uint32)0x00000001L; //s1
     *(--pstk) = (uint32)0x00000000L; //s0
 
+
     *(--pstk) = (uint32)0x01000000uL; // xPSR
     *(--pstk) = (uint32)task;         // Entry Point
-    *(--pstk) = (uint32)xtos_distroy_task;; // R14 (LR)
+    *(--pstk) = (uint32)mdos_distroy_task;; // R14 (LR)
     *(--pstk) = (uint32)12121212; // R12
     *(--pstk) = (uint32)03030303; // R3
     *(--pstk) = (uint32)02020202; // R2
@@ -93,12 +121,25 @@ void xtos_create_task(struct xtos_task_struct * tcb, xtos_task task, uint32 * st
     *(--pstk) = (uint32)0x04040404uL; // R4
 
     tcb->pTopOfStack = pstk;
+
+	if(gp_mdos_cur_task==NULL)
+	{
+		gp_mdos_cur_task=tcb;
+		gp_mdos_cur_task->next=tcb;
+	}
+	else
+	{
+		tcb->next=gp_mdos_cur_task->next;
+		gp_mdos_cur_task->next=tcb;
+		gp_mdos_cur_task=tcb;
+	}
+	
 }
 
 /*获取下一个任务的tcb指针*/
 void get_next_TCB(void)
 {
-	gp_xtos_cur_task=gp_xtos_cur_task->next;
+	gp_mdos_cur_task=gp_mdos_cur_task->next;
 }
 
 
