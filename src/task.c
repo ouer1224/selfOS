@@ -3,11 +3,15 @@
 
 /*mdos的含义是module os,可以通过修改接口的方式,对调度算法,内存管理,消息的传递*/
 
-
-
-#include "task.h"
 #include "null.h"
 #include "cortex_m4_register.h"
+#include "link_list.h"
+#include "task.h"
+
+
+
+
+
 
 
 
@@ -18,16 +22,21 @@ volatile uint32_t gOS_sys_time=0;
 
 
 
+static struct __link_list shead_suspend_link={NULL,NULL};//该链表暂时无用
+static struct __link_list shead_sleep_link={NULL,NULL};//存放需要休眠的任务
+
+
+
+/*idle任务创建的环境*/
 #define SIZE_STACK_TASK_IDLE	48
 volatile struct mdos_task_struct task_idle;
 static unsigned int task_idle_Stk[SIZE_STACK_TASK_IDLE];
 
 
 
+
 #define head_asm_frame		__asm volatile(
 #define tail_asm_frame		);
-
-
 
 
 
@@ -43,10 +52,14 @@ uint8_t OS_readyToSwitch(void)
 void OStaskDelay(uint32_t dly)
 {
 
+//	list_del(&(gp_mdos_cur_task->link));
+	
+
 	gp_mdos_cur_task->state=OS_SUSPEND;
 	gp_mdos_cur_task->wake_time=get_OS_sys_count()+dly;	//需要判断计数溢出的问题
 	OS_readyToSwitch();
 	while(gp_mdos_cur_task->state==OS_SUSPEND);
+	
 }
 
 void TaskDelay(uint32_t dly)
@@ -163,19 +176,7 @@ void mdos_create_task(struct mdos_task_struct * tcb, mdos_task task, uint32_t * 
 	tcb->wake_time=0;
 
 
-#if 0
-	if(gp_mdos_cur_task==NULL)
-	{
-		gp_mdos_cur_task=tcb;
-		gp_mdos_cur_task->next=tcb;
-	}
-	else
-	{
-		tcb->next=gp_mdos_cur_task->next;
-		gp_mdos_cur_task->next=tcb;
-		gp_mdos_cur_task=tcb;
-	}
-#else
+	/*将任务添加到链表中*/
 	if(gp_mdos_cur_task==NULL)
 	{
 		gp_mdos_cur_task=tcb;
@@ -189,7 +190,8 @@ void mdos_create_task(struct mdos_task_struct * tcb, mdos_task task, uint32_t * 
 		gp_mdos_cur_task=tcb;
 	}
 
-#endif	
+
+
 }
 
 /*获取下一个任务的tcb指针*/
@@ -198,10 +200,8 @@ void get_next_TCB(void)
 	do
 	{
 
-	
 		gp_mdos_cur_task=container_of(gp_mdos_cur_task->link.next,struct mdos_task_struct,link);
 	
-//		gp_mdos_cur_task=gp_mdos_cur_task->next;
 		if(gp_mdos_cur_task->state==OS_SUSPEND)
 		{
 			if(gp_mdos_cur_task->wake_time<=get_OS_sys_count())

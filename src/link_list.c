@@ -17,7 +17,8 @@
 
 #define init_list_for_type(array)	__init_list_for_type(&array[0].list,numofbuffer(array),sizeof_V(array[0]))
 
-static struct __link_list *shead=NULL,*stail=NULL;
+static struct __link_list *shead=NULL;
+static struct __link_list *stail=NULL;
 
 
 int init_link_list(link_list *list)
@@ -64,7 +65,14 @@ int list_add_before(link_list *new_list,link_list *current)
 {
 	return __list_add(new_list,current->pre,current);		
 }
+/*删除当前节点*/
+int list_del(link_list *current)
+{
+	current->pre->next=current->next;
+	current->next->pre=current->pre;
 
+	return 0;
+}
 #if 1
 /*
 返回值为0时,表示空,返回值为1时表示满,返回值为-1时,表示非空,非满 
