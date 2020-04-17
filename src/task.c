@@ -25,6 +25,9 @@ volatile uint32_t gOS_sys_time=0;
 static struct __link_list shead_suspend_link={NULL,NULL};//该链表暂时无用
 static struct __link_list shead_sleep_link={NULL,NULL};//存放需要休眠的任务
 
+static struct __link_list *spr_tail_spd_link=&shead_suspend_link;
+
+
 
 
 /*idle任务创建的环境*/
@@ -197,9 +200,12 @@ void mdos_create_task(struct mdos_task_struct * tcb, mdos_task task, uint32_t * 
 /*获取下一个任务的tcb指针*/
 void get_next_TCB(void)
 {
+	struct mdos_task_struct *pr=NULL;
+	struct __link_list *pr_spd=NULL,*pr_spd_next=NULL;
+
+#if 0
 	do
 	{
-
 		gp_mdos_cur_task=container_of(gp_mdos_cur_task->link.next,struct mdos_task_struct,link);
 	
 		if(gp_mdos_cur_task->state==OS_SUSPEND)
@@ -210,6 +216,66 @@ void get_next_TCB(void)
 			}
 		}
 	}while(gp_mdos_cur_task->state!=OS_RUN);
+#else
+	do
+	{
+		if(gp_mdos_cur_task->state==OS_SUSPEND)
+		{
+			pr=gp_mdos_cur_task;
+			gp_mdos_cur_task=container_of(gp_mdos_cur_task->link.next,struct mdos_task_struct,link);
+			
+			list_del(&(pr->link));
+
+			if(spr_tail_spd_link->next==NULL)
+			{
+				spr_tail_spd_link->next=&(pr->link);
+				spr_tail_spd_link->pre=&(pr->link);
+
+				pr->link.pre=spr_tail_spd_link;
+				pr->link.next=spr_tail_spd_link;
+			}
+			else
+			{
+				list_add_behind(&(pr->link), spr_tail_spd_link);
+			}
+			
+		}
+		else
+		{
+			gp_mdos_cur_task=container_of(gp_mdos_cur_task->link.next,struct mdos_task_struct,link);
+		}
+	}
+	while(gp_mdos_cur_task->state!=OS_RUN);
+
+
+	pr_spd=&shead_suspend_link;
+	pr_spd_next=pr_spd->next;
+	while((pr_spd_next!=(&shead_suspend_link)))
+	{
+		
+		if((pr_spd_next==NULL))	//链表尚未初始化
+		{
+			break;
+		}
+		
+		pr_spd=pr_spd_next;//获取当前需要处理的节点的位置
+		pr_spd_next=pr_spd->next;//保存下个节点的位置.避免当前节点删除后,找不到下个节点
+	
+		pr=container_of(pr_spd,struct mdos_task_struct,link);
+		
+		if(pr->wake_time<=get_OS_sys_count())
+		{
+			pr->state=OS_RUN;
+			list_del(&(pr->link));
+
+			list_add_before(&(pr->link),&(gp_mdos_cur_task->link));
+			
+		}
+	}
+
+
+#endif
+	
 }
 
 
