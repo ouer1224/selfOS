@@ -14,14 +14,40 @@
 volatile struct  mdos_task_struct  *gp_mdos_cur_task=NULL;
 volatile struct  mdos_task_struct  *gp_mdos_next_task=NULL;
 
+#define SIZE_STACK_TASK_IDLE	48
 volatile struct mdos_task_struct task_idle;
-static unsigned int task_idle_Stk[128];
+static unsigned int task_idle_Stk[SIZE_STACK_TASK_IDLE];
 
 
 
 #define head_asm_frame		__asm volatile(
 #define tail_asm_frame		);
 
+
+uint8_t readyToSwitch(void)
+{	
+	SCB_ICSR |= 0x01<<26;
+	while(SCB_ICSR&(0x01<<26)!=0);
+
+	return 1;
+}
+
+void OStaskDelay(uint32_t dly)
+{
+	gp_mdos_cur_task->state=OS_SUSPEND;
+	while(dly--)
+	{
+		readyToSwitch();
+	}
+
+}
+
+void TaskDelay(uint32_t dly)
+{
+
+	OStaskDelay(dly);
+
+}
 
 
 void taskidle(void)
@@ -40,9 +66,7 @@ void mdos_start (void)
 {
 
 	//添加idle任务
-	mdos_create_task(&task_idle,taskidle,&task_idle_Stk[128 - 1]);
-
-
+	mdos_create_task(&task_idle,taskidle,&task_idle_Stk[SIZE_STACK_TASK_IDLE - 1]);
 
 
 	SCB_SHPR3=0xff<<16;
@@ -76,51 +100,53 @@ void mdos_distroy_task() {
 }
 
 
-void mdos_create_task(struct mdos_task_struct * tcb, mdos_task task, uint32 * stk) 
+void mdos_create_task(struct mdos_task_struct * tcb, mdos_task task, uint32_t * stk)
 {
-    uint32  *pstk;
+	uint32_t  *pstk;
     pstk = stk;
-    pstk = (uint32 *)((uint32)(pstk) & 0xFFFFFFF8uL);
+    pstk = (uint32_t *)((uint32_t)(pstk) & 0xFFFFFFF8uL);
 
-    *(--pstk) = (uint32)0x00000000L; //No Name Register  
-    *(--pstk) = (uint32)0x00001000L; //FPSCR
-    *(--pstk) = (uint32)0x00000015L; //s15
-    *(--pstk) = (uint32)0x00000014L; //s14
-    *(--pstk) = (uint32)0x00000013L; //s13
-    *(--pstk) = (uint32)0x00000012L; //s12
-    *(--pstk) = (uint32)0x00000011L; //s11
-    *(--pstk) = (uint32)0x00000010L; //s10
-    *(--pstk) = (uint32)0x00000009L; //s9
-    *(--pstk) = (uint32)0x00000008L; //s8
-    *(--pstk) = (uint32)0x00000007L; //s7
-    *(--pstk) = (uint32)0x00000006L; //s6
-    *(--pstk) = (uint32)0x00000005L; //s5
-    *(--pstk) = (uint32)0x00000004L; //s4
-    *(--pstk) = (uint32)0x00000003L; //s3
-    *(--pstk) = (uint32)0x00000002L; //s2
-    *(--pstk) = (uint32)0x00000001L; //s1
-    *(--pstk) = (uint32)0x00000000L; //s0
+    *(--pstk) = (uint32_t)0x00000000L; //No Name Register
+    *(--pstk) = (uint32_t)0x00001000L; //FPSCR
+    *(--pstk) = (uint32_t)0x00000015L; //s15
+    *(--pstk) = (uint32_t)0x00000014L; //s14
+    *(--pstk) = (uint32_t)0x00000013L; //s13
+    *(--pstk) = (uint32_t)0x00000012L; //s12
+    *(--pstk) = (uint32_t)0x00000011L; //s11
+    *(--pstk) = (uint32_t)0x00000010L; //s10
+    *(--pstk) = (uint32_t)0x00000009L; //s9
+    *(--pstk) = (uint32_t)0x00000008L; //s8
+    *(--pstk) = (uint32_t)0x00000007L; //s7
+    *(--pstk) = (uint32_t)0x00000006L; //s6
+    *(--pstk) = (uint32_t)0x00000005L; //s5
+    *(--pstk) = (uint32_t)0x00000004L; //s4
+    *(--pstk) = (uint32_t)0x00000003L; //s3
+    *(--pstk) = (uint32_t)0x00000002L; //s2
+    *(--pstk) = (uint32_t)0x00000001L; //s1
+    *(--pstk) = (uint32_t)0x00000000L; //s0
 
 
-    *(--pstk) = (uint32)0x01000000uL; // xPSR
-    *(--pstk) = (uint32)task;         // Entry Point
-    *(--pstk) = (uint32)mdos_distroy_task;; // R14 (LR)
-    *(--pstk) = (uint32)12121212; // R12
-    *(--pstk) = (uint32)03030303; // R3
-    *(--pstk) = (uint32)02020202; // R2
-    *(--pstk) = (uint32)01010101; // R1
-    *(--pstk) = (uint32)0x00000000;  // R0
+    *(--pstk) = (uint32_t)0x01000000uL; // xPSR
+    *(--pstk) = (uint32_t)task;         // Entry Point
+    *(--pstk) = (uint32_t)mdos_distroy_task;; // R14 (LR)
+    *(--pstk) = (uint32_t)12121212; // R12
+    *(--pstk) = (uint32_t)03030303; // R3
+    *(--pstk) = (uint32_t)02020202; // R2
+    *(--pstk) = (uint32_t)01010101; // R1
+    *(--pstk) = (uint32_t)0x00000000;  // R0
 
-    *(--pstk) = (uint32)0x11111111uL; // R11
-    *(--pstk) = (uint32)0x10101010uL; // R10
-    *(--pstk) = (uint32)0x09090909uL; // R9
-    *(--pstk) = (uint32)0x08080808uL; // R8
-    *(--pstk) = (uint32)0x07070707uL; // R7
-    *(--pstk) = (uint32)0x06060606uL; // R6
-    *(--pstk) = (uint32)0x05050505uL; // R5
-    *(--pstk) = (uint32)0x04040404uL; // R4
+    *(--pstk) = (uint32_t)0x11111111uL; // R11
+    *(--pstk) = (uint32_t)0x10101010uL; // R10
+    *(--pstk) = (uint32_t)0x09090909uL; // R9
+    *(--pstk) = (uint32_t)0x08080808uL; // R8
+    *(--pstk) = (uint32_t)0x07070707uL; // R7
+    *(--pstk) = (uint32_t)0x06060606uL; // R6
+    *(--pstk) = (uint32_t)0x05050505uL; // R5
+    *(--pstk) = (uint32_t)0x04040404uL; // R4
 
     tcb->pTopOfStack = pstk;
+	tcb->state=OS_RUN;
+	tcb->wake_time=0;
 
 	if(gp_mdos_cur_task==NULL)
 	{
@@ -139,7 +165,11 @@ void mdos_create_task(struct mdos_task_struct * tcb, mdos_task task, uint32 * st
 /*获取下一个任务的tcb指针*/
 void get_next_TCB(void)
 {
-	gp_mdos_cur_task=gp_mdos_cur_task->next;
+	do
+	{
+		gp_mdos_cur_task=gp_mdos_cur_task->next;
+
+	}while(gp_mdos_cur_task.state!=OS_RUN);
 }
 
 

@@ -176,7 +176,8 @@ void taska(void)
 	while (1) 
 	{
 		task_blink_red();
-		Dlyms(2000);
+		//Dlyms(2000);
+		OStaskDelay(2000);
 	}
 
 }
@@ -185,7 +186,8 @@ void taskb(void)
 {
     while (1) 
 	{
-		Dlyms(3000);
+		//Dlyms(3000);
+		OStaskDelay(3000);
 		task_blink_green();
 		
     }
@@ -194,9 +196,11 @@ void taskc(void)
 {
     while (1) 
 	{
-		Dlyms(4000);
+		//Dlyms(4000);
+		OStaskDelay(4000);
 		task_blink_blue();
-		Dlyms(1000);
+		//Dlyms(1000);
+		OStaskDelay(1000);
     }
 }
 
@@ -224,13 +228,6 @@ int main(void)
 
 
 
-#if 0
-  gp_mdos_cur_task = &taskA;
-
-  taskA.next=&taskB;
-  taskB.next=&taskC;
-  taskC.next=&taskA;
-#endif
   ENABLE_INTERRUPTS();
   mdos_start();
 
