@@ -3,10 +3,10 @@
 #define __task_h__
 
 #include <stdint.h>
+#include "link_list.h"
 
 
 
-#define NULL	(void *)0
 
 extern volatile uint32_t gOS_sys_time;
 
@@ -21,10 +21,10 @@ enum _State_Task
 
 
 struct mdos_task_struct {
-    uint32_t *pTopOfStack;   /* ’ª∂•µÿ÷∑ */
-	enum _State_Task state;
-	uint32_t wake_time;
-	void * next;
+	volatile uint32_t *pTopOfStack;   /* ’ª∂•µÿ÷∑ */
+	volatile enum _State_Task state;
+	volatile uint32_t wake_time;
+	volatile struct __link_list link;
 };
 
 
@@ -50,9 +50,10 @@ void mdos_pendsv_handler(void);
 void mdos_create_task(struct mdos_task_struct *tcb, mdos_task task, uint32_t *stk);
 void mdos_distroy_task(void);
 
-void OStaskDelay(uint32_t dly);
 uint8_t OS_readyToSwitch(void);
 
+
+void TaskDelay(uint32_t dly);
 
 #endif
 

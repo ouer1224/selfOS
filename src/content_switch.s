@@ -94,11 +94,12 @@ content_save:
 	str r0,[r1]		//save new stack addr
 
 /*在中断中,lr代表的不是返回地址.由于调用c函数,在进入子函数后,lr会发生变化,变为当前的位置.即使从子函数退出后,也不会变回来.因此在进入子函数前,lr需要保存一下*/
-	mov r0,lr
+//	mov r0,lr
+	push {lr}
 	ldr r1,=get_next_TCB
 	blx r1
-	mov lr,r0
-
+//	mov lr,r0
+	pop {lr}
 content_load:
 
 	ldr r0,=gp_mdos_cur_task

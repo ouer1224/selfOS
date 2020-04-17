@@ -4,9 +4,9 @@
 /*mdos的含义是module os,可以通过修改接口的方式,对调度算法,内存管理,消息的传递*/
 
 
-#include <stdint.h>
-#include "task.h"
 
+#include "task.h"
+#include "null.h"
 #include "cortex_m4_register.h"
 
 
@@ -35,7 +35,6 @@ static unsigned int task_idle_Stk[SIZE_STACK_TASK_IDLE];
 uint8_t OS_readyToSwitch(void)
 {	
 	SCB_ICSR |= 0x01<<28;
-//	while((SCB_ICSR&(0x01<<28))!=0);
 
 	return 1;
 }
@@ -163,6 +162,8 @@ void mdos_create_task(struct mdos_task_struct * tcb, mdos_task task, uint32_t * 
 	tcb->state=OS_RUN;
 	tcb->wake_time=0;
 
+
+#if 0
 	if(gp_mdos_cur_task==NULL)
 	{
 		gp_mdos_cur_task=tcb;
@@ -174,7 +175,21 @@ void mdos_create_task(struct mdos_task_struct * tcb, mdos_task task, uint32_t * 
 		gp_mdos_cur_task->next=tcb;
 		gp_mdos_cur_task=tcb;
 	}
-	
+#else
+	if(gp_mdos_cur_task==NULL)
+	{
+		gp_mdos_cur_task=tcb;
+		gp_mdos_cur_task->link.pre=&(gp_mdos_cur_task->link);
+		gp_mdos_cur_task->link.next=&(gp_mdos_cur_task->link);
+
+	}
+	else
+	{
+		list_add_behind(&(tcb->link),&(gp_mdos_cur_task->link));
+		gp_mdos_cur_task=tcb;
+	}
+
+#endif	
 }
 
 /*获取下一个任务的tcb指针*/
@@ -182,7 +197,11 @@ void get_next_TCB(void)
 {
 	do
 	{
-		gp_mdos_cur_task=gp_mdos_cur_task->next;
+
+	
+		gp_mdos_cur_task=container_of(gp_mdos_cur_task->link.next,struct mdos_task_struct,link);
+	
+//		gp_mdos_cur_task=gp_mdos_cur_task->next;
 		if(gp_mdos_cur_task->state==OS_SUSPEND)
 		{
 			if(gp_mdos_cur_task->wake_time<=get_OS_sys_count())
