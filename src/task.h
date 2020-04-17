@@ -32,7 +32,7 @@ struct mdos_task_struct {
 #define OS_sys_count_add()	do{gOS_sys_time++;}while(0)
 #define get_OS_sys_count()		gOS_sys_time
 
-
+#define Sys_readyToSwitch()		do{	OS_sys_count_add();OS_readyToSwitch();}while(0)
 
 
 

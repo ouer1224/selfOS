@@ -35,19 +35,19 @@ static unsigned int task_idle_Stk[SIZE_STACK_TASK_IDLE];
 uint8_t OS_readyToSwitch(void)
 {	
 	SCB_ICSR |= 0x01<<28;
-	while(SCB_ICSR&(0x01<<28)!=0);
+//	while((SCB_ICSR&(0x01<<28))!=0);
 
 	return 1;
 }
 
+/*比如设置无限等待时的处理措施*/
 void OStaskDelay(uint32_t dly)
 {
-	//gp_mdos_cur_task->state=OS_SUSPEND;
-	while(dly--)
-	{
-		OS_readyToSwitch();
-	}
 
+	gp_mdos_cur_task->state=OS_SUSPEND;
+	gp_mdos_cur_task->wake_time=get_OS_sys_count()+dly;	//需要判断计数溢出的问题
+	OS_readyToSwitch();
+	while(gp_mdos_cur_task->state==OS_SUSPEND);
 }
 
 void TaskDelay(uint32_t dly)
@@ -183,7 +183,13 @@ void get_next_TCB(void)
 	do
 	{
 		gp_mdos_cur_task=gp_mdos_cur_task->next;
-
+		if(gp_mdos_cur_task->state==OS_SUSPEND)
+		{
+			if(gp_mdos_cur_task->wake_time<=get_OS_sys_count())
+			{
+				gp_mdos_cur_task->state=OS_RUN;
+			}
+		}
 	}while(gp_mdos_cur_task->state!=OS_RUN);
 }
 

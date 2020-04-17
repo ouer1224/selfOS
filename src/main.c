@@ -165,42 +165,40 @@ void HardFault_Handler(void)
 void FTM3_Ovf_Reload_IRQHandler (void)
 {
 	FTM3->SC &= ~FTM_SC_TOF_MASK; //清除中断标志
-	OS_sys_count_add();
-	OS_readyToSwitch();
+	
+	Sys_readyToSwitch();
+
 }
 
 
 
 void taska(void) 
 {
+	TaskDelay(500);
 	while (1) 
 	{
+		TaskDelay(1000);
 		task_blink_red();
-		//Dlyms(2000);
-		OStaskDelay(2000);
 	}
 
 }
 
 void taskb(void) 
 {
+	TaskDelay(1000);	
     while (1) 
 	{
-		//Dlyms(3000);
-		OStaskDelay(3000);
+		TaskDelay(1000);
 		task_blink_green();
-		
     }
 }
 void taskc(void) 
 {
+	TaskDelay(1500);	
     while (1) 
 	{
-		//Dlyms(4000);
-		OStaskDelay(4000);
+		TaskDelay(1000);
 		task_blink_blue();
-		//Dlyms(1000);
-		OStaskDelay(1000);
     }
 }
 
