@@ -14,6 +14,10 @@
 volatile struct  mdos_task_struct  *gp_mdos_cur_task=NULL;
 volatile struct  mdos_task_struct  *gp_mdos_next_task=NULL;
 
+volatile uint32_t gOS_sys_time=0;
+
+
+
 #define SIZE_STACK_TASK_IDLE	48
 volatile struct mdos_task_struct task_idle;
 static unsigned int task_idle_Stk[SIZE_STACK_TASK_IDLE];
@@ -24,20 +28,24 @@ static unsigned int task_idle_Stk[SIZE_STACK_TASK_IDLE];
 #define tail_asm_frame		);
 
 
-uint8_t readyToSwitch(void)
+
+
+
+
+uint8_t OS_readyToSwitch(void)
 {	
-	SCB_ICSR |= 0x01<<26;
-	while(SCB_ICSR&(0x01<<26)!=0);
+	SCB_ICSR |= 0x01<<28;
+	while(SCB_ICSR&(0x01<<28)!=0);
 
 	return 1;
 }
 
 void OStaskDelay(uint32_t dly)
 {
-	gp_mdos_cur_task->state=OS_SUSPEND;
+	//gp_mdos_cur_task->state=OS_SUSPEND;
 	while(dly--)
 	{
-		readyToSwitch();
+		OS_readyToSwitch();
 	}
 
 }
@@ -68,7 +76,7 @@ void mdos_start (void)
 	//添加idle任务
 	mdos_create_task(&task_idle,taskidle,&task_idle_Stk[SIZE_STACK_TASK_IDLE - 1]);
 
-
+#if 0		//systick
 	SCB_SHPR3=0xff<<16;
 
 	SYST_RVR=160000;
@@ -80,6 +88,13 @@ void mdos_start (void)
 	SCB_SHPR3=0x01<<24;
 
 	SYST_CSR=SYST_CSR|0x01;
+
+#else
+	//pendsv
+	SCB_SHPR3=0xff<<16;
+
+
+#endif
 
 	__asm volatile	//将psp设置为0,表示是第一次切换上下文.
 	(
@@ -169,7 +184,7 @@ void get_next_TCB(void)
 	{
 		gp_mdos_cur_task=gp_mdos_cur_task->next;
 
-	}while(gp_mdos_cur_task.state!=OS_RUN);
+	}while(gp_mdos_cur_task->state!=OS_RUN);
 }
 
 

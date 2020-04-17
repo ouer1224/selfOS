@@ -165,9 +165,9 @@ void HardFault_Handler(void)
 void FTM3_Ovf_Reload_IRQHandler (void)
 {
 	FTM3->SC &= ~FTM_SC_TOF_MASK; //清除中断标志
-	
+	OS_sys_count_add();
+	OS_readyToSwitch();
 }
-
 
 
 

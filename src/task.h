@@ -8,6 +8,10 @@
 
 #define NULL	(void *)0
 
+extern volatile uint32_t gOS_sys_time;
+
+
+
 enum _State_Task
 {
 	OS_RUN=0,
@@ -25,6 +29,14 @@ struct mdos_task_struct {
 
 
 
+#define OS_sys_count_add()	do{gOS_sys_time++;}while(0)
+#define get_OS_sys_count()		gOS_sys_time
+
+
+
+
+
+
 typedef void(*mdos_task)(void);
 
 
@@ -39,6 +51,7 @@ void mdos_create_task(struct mdos_task_struct *tcb, mdos_task task, uint32_t *st
 void mdos_distroy_task(void);
 
 void OStaskDelay(uint32_t dly);
+uint8_t OS_readyToSwitch(void);
 
 
 #endif

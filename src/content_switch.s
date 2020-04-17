@@ -5,14 +5,16 @@
 
 .global OSTest
 .global SysTick_Handler
+.global PendSV_Handler
 
 .type   OSTest, function
 .type   SysTick_Handler, function
+.type   PendSV_Handler, function
 
 
- .extern OSTest
- .extern SysTick_Handler
-
+.extern OSTest
+.extern SysTick_Handler
+.extern PendSV_Handler
 
 .text
 .balign 4
@@ -24,11 +26,20 @@
 .thumb_func
 
 
+PendSV_Handler:
+
+	ldr r0,=#0xE000ED04
+	ldr r1,=#0x800000	//Çå³ýpendsvµÄ´¥·¢
+	str r1,[r0]
+	
+#if 0
 SysTick_Handler:
 
 	ldr r0,=#0xE000ED04
 	ldr r1,=#0x1000000
 	str r1,[r0]
+#endif
+
 
 	mrs r0,psp
 	cbnz r0,content_save
