@@ -25,20 +25,20 @@ int init_link_list(link_list *list)
 {
 	if(list==NULL)
 	{
-		return -1;
+		return os_null_pr;
 	}	
 	
 	list->pre=list;
 	list->next=list;
 	
-	return 0;
+	return os_true;
 }
 
 int __list_add(link_list *new_list,link_list *pre,link_list *next)
 {
 	if((new_list==NULL)||(pre==NULL)||(next==NULL))
 	{
-		return -1;		
+		return os_null_pr;		
 	}
 	
 	new_list->next=next;
@@ -47,7 +47,7 @@ int __list_add(link_list *new_list,link_list *pre,link_list *next)
 	new_list->pre=pre;
 	pre->next=new_list;	
 
-	return 0;	
+	return os_true;	
 }
 /*
 在current节点之后添加一个新的new_list节点 
