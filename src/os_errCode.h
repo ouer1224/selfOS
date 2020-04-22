@@ -10,16 +10,15 @@ typedef struct
 }__ErrCode;
 
 
-
 typedef struct
 {
-	__ErrCode err_fun;
-	__ErrCode err_mem_pool;
-	__ErrCode err_task;
-	__ErrCode err_list;
+	__ErrCode fun;
+	__ErrCode memPool;
+	__ErrCode task;
+	__ErrCode list;
 }ErrCode;
 
-extern ErrCode gOS_err_code;
+extern ErrCode gOS_kernel_err_code;
 
 
 

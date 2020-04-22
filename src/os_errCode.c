@@ -5,7 +5,7 @@
 #include "os_errCode.h"
 
 
-ErrCode gOS_err_code;
+ErrCode gOS_kernel_err_code;
 
 
 

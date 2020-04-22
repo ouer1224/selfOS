@@ -13,17 +13,37 @@
 #include "os_def.h"
 #include "mem_manage.h"
 #include "link_list.h"
+#include "task.h"
+
+
+#ifdef mempool_null_pr
+#error	mempool_null_pr shuld not been defined by user
+#endif
+
+#ifdef mempool_true
+#error	mempool_true shuld not been defined by user
+#endif
+
+#ifdef mempool_false
+#error	mempool_false shuld not been defined by user
+#endif
+
+
+
+#define mempool_null_pr		os_kernel_val(memPool,os_null_pr)
+#define mempool_true		os_kernel_val(memPool,os_true)
+#define mempool_false		os_kernel_val(memPool,os_false)
 
 
 uint32_t os_memcpy(void * dest,void * source,int32_t len)
 {	
 	if((dest==NULL)||(source==NULL))
 	{
-		return os_null_pr;
+		return mempool_null_pr;
 	}
 	if(len<=0)
 	{
-		return os_false;
+		return mempool_false;
 	}
 
 	while(len>0)
@@ -32,7 +52,8 @@ uint32_t os_memcpy(void * dest,void * source,int32_t len)
 		((char *)dest)[len]=((char *)source)[len];
 	}
 
-	return os_true;
+
+	return mempool_true;
 }
 
 uint32_t os_memset(void *dest,uint8_t ch,int32_t len)
@@ -40,11 +61,11 @@ uint32_t os_memset(void *dest,uint8_t ch,int32_t len)
 
 	if(dest==NULL)
 	{
-		return os_null_pr;
+		return mempool_null_pr;
 	}
 	if(len<=0)
 	{
-		return os_false;
+		return mempool_false;
 	}
 
 	while(len>0)
@@ -53,7 +74,7 @@ uint32_t os_memset(void *dest,uint8_t ch,int32_t len)
 		((char *)dest)[len]=ch;
 	}
 
-	return os_true;
+	return mempool_true;
 
 }
 
@@ -66,11 +87,11 @@ uint32_t creat_mem_pool(mem_pool *pr_pool,void * pr,uint32_t len,uint32_t deep)
 {
 	if(pr_pool==NULL)
 	{
-		return os_null_pr;
+		return mempool_null_pr;
 	}
 	if(deep>256)
 	{
-		return os_false;
+		return mempool_false;
 	}
 
 	pr_pool->deep=deep;
@@ -86,14 +107,17 @@ uint32_t creat_mem_pool(mem_pool *pr_pool,void * pr,uint32_t len,uint32_t deep)
 
 
 	
-	return os_true;
+	return mempool_true;
 }
 
 
 
 
 
-
+/*不给外界使用*/
+#undef mempool_null_pr
+#undef mempool_true
+#undef mempool_false
 
 
 

@@ -24,7 +24,7 @@ int init_link_list(link_list *list)
 {
 	if(list==NULL)
 	{
-		return 0;//os_fun_val(err_list,os_null_pr);
+		return os_null_pr;//os_kernel_val(list,os_null_pr);
 	}	
 	
 	list->pre=list;
