@@ -1,10 +1,9 @@
 
 
 #include <stdint.h>
-
 #include "link_list.h"
-
 #include "null.h"
+
 
 
 //#define numofbuffer(a)		(sizeof(a)/sizeof(a[0]))
@@ -25,7 +24,7 @@ int init_link_list(link_list *list)
 {
 	if(list==NULL)
 	{
-		return os_null_pr;
+		return 0;//os_fun_val(err_list,os_null_pr);
 	}	
 	
 	list->pre=list;

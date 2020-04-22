@@ -2,13 +2,13 @@
 #ifndef __LINK_LIST_H__
 #define __LINK_LIST_H__
 
-
+#include "os_def.h"
 
 
 
 struct __link_list{
-	volatile struct __link_list  *pre;
-	volatile struct __link_list  *next;
+	struct __link_list  *pre;
+	struct __link_list  *next;
 };
 
 

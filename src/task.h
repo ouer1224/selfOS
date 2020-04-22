@@ -3,6 +3,7 @@
 #define __task_h__
 
 #include <stdint.h>
+
 #include "link_list.h"
 
 
@@ -21,10 +22,10 @@ enum _State_Task
 
 
 struct mdos_task_struct {
-	volatile uint32_t *pTopOfStack;   /* ’ª∂•µÿ÷∑ */
-	volatile enum _State_Task state;
-	volatile uint32_t wake_time;
-	volatile struct __link_list link;
+	uint32_t *pTopOfStack;   /* ’ª∂•µÿ÷∑ */
+	enum _State_Task state;
+	uint32_t wake_time;
+	struct __link_list link;
 };
 
 
