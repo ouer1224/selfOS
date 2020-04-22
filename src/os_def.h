@@ -9,10 +9,11 @@
 #define os_false			0
 #define os_null_pr			0xffffffff
 
-
+#define os_kernel_save_line(member)			(gOS_kernel_err_code.member.line=__LINE__)
 #define os_kernel_save_err(member,val)		((gOS_kernel_err_code.member.err=val)?val:0)
-#define os_kernel_save_time(member)		(gOS_kernel_err_code.member.time=get_OS_sys_count())
-#define os_kernel_err(member,val) 			((os_kernel_save_time(member))?((os_kernel_save_err(member,val))):0)
+#define os_kernel_save_err_line(member,val)	((os_kernel_save_line(member))?((os_kernel_save_err(member,val))):0)
+#define os_kernel_save_time(member)			(gOS_kernel_err_code.member.time=get_OS_sys_count())
+#define os_kernel_err(member,val) 			((os_kernel_save_time(member))?((os_kernel_save_err_line(member,val))):0)
 #define os_kernel_val(member,val)			((val==os_true)?os_true:(os_kernel_err(member,val)))
 
 

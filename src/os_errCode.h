@@ -7,6 +7,7 @@ typedef struct
 {
 	uint32_t err;
 	uint32_t time;
+	uint32_t line;
 }__ErrCode;
 
 

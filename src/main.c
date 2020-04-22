@@ -12,6 +12,9 @@
 #include <stdint.h>
 #include "task.h"
 #include "cortex_m4_register.h"
+#include "null.h"
+
+#include "mem_manage.h"
 
 
 
@@ -48,6 +51,12 @@ volatile struct mdos_task_struct taskA;
 volatile struct mdos_task_struct taskB;
 volatile struct mdos_task_struct taskC;
 
+#define LEN_TASKA_MEM	12
+#define DEEP_TASKA_MEM	15
+
+static mem_pool smem_test;
+static uint8_t buf_mem[LEN_TASKA_MEM*DEEP_TASKA_MEM];
+static void * pr_tran=NULL,*pr_send=NULL,*pr_rcv=NULL;
 
 
 
@@ -174,21 +183,58 @@ void FTM3_Ovf_Reload_IRQHandler (void)
 
 void taska(void) 
 {
+	uint32_t rc=0;
+	uint32_t i=0;
 	TaskDelay(500);
+
+	rc=creat_mem_pool(&smem_test,buf_mem,LEN_TASKA_MEM,DEEP_TASKA_MEM);
+	if(rc!=os_true)
+	{
+		while(1);
+	}	
 	while (1) 
 	{
-		TaskDelay(1000);
+		TaskDelay(100);
 		task_blink_red();
+		pr_send=get_mem_from_pool(&smem_test,LEN_TASKA_MEM);
+		if(pr_send==NULL)
+		{
+			
+		}
+		else
+		{
+			pr_tran=pr_send;
+			for(i=0;i<LEN_TASKA_MEM;i++)
+			{
+				*((uint8_t *)pr_tran+i)=i+rc;
+			}
+			rc++;
+
+		}
+
 	}
 
 }
 
 void taskb(void) 
 {
+	uint8_t buf[24];
 	TaskDelay(1000);	
     while (1) 
 	{
-		TaskDelay(1000);
+
+		if(pr_tran==NULL)
+		{
+			
+		}
+		else
+		{
+			pr_rcv=pr_tran;
+			os_memcpy(buf,pr_rcv,LEN_TASKA_MEM);
+			free_mem_to_pool(&pr_tran);
+		}
+	
+		TaskDelay(200);
 		task_blink_green();
     }
 }

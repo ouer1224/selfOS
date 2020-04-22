@@ -32,8 +32,8 @@
 #define mempool_null_pr		os_kernel_val(memPool,os_null_pr)
 #define mempool_true		os_kernel_val(memPool,os_true)
 #define mempool_false		os_kernel_val(memPool,os_false)
-#define mempool_empty		os_kernel_val(memPool,os_false)
-#define mempool_unused		os_kernel_val(memPool,os_false)
+#define mempool_empty		os_kernel_val(memPool,2)
+#define mempool_unused		os_kernel_val(memPool,3)
 
 
 
@@ -47,11 +47,11 @@ uint32_t os_memcpy(void * dest,void * source,int32_t len)
 {	
 	if((dest==NULL)||(source==NULL))
 	{
-		return mempool_null_pr;
+		return os_kernel_val(fun,os_null_pr);
 	}
 	if(len<=0)
 	{
-		return mempool_false;
+		return os_kernel_val(fun,os_false);
 	}
 
 	while(len>0)
@@ -61,7 +61,7 @@ uint32_t os_memcpy(void * dest,void * source,int32_t len)
 	}
 
 
-	return mempool_true;
+	return os_kernel_val(fun,os_true);
 }
 
 uint32_t os_memset(void *dest,uint8_t ch,int32_t len)
@@ -69,11 +69,11 @@ uint32_t os_memset(void *dest,uint8_t ch,int32_t len)
 
 	if(dest==NULL)
 	{
-		return mempool_null_pr;
+		return os_kernel_val(fun,os_null_pr);
 	}
 	if(len<=0)
 	{
-		return mempool_false;
+		return os_kernel_val(fun,os_false);
 	}
 
 	while(len>0)
@@ -82,7 +82,7 @@ uint32_t os_memset(void *dest,uint8_t ch,int32_t len)
 		((char *)dest)[len]=ch;
 	}
 
-	return mempool_true;
+	return os_kernel_val(fun,os_true);
 
 }
 
@@ -101,7 +101,7 @@ uint32_t creat_mem_pool(mem_pool *pr_pool,void * pr,uint32_t len,uint32_t deep)
 	{
 		return mempool_false;
 	}
-
+	input_critical_area();
 	pr_pool->deep=deep;
 	pr_pool->len=len;
 
@@ -115,6 +115,7 @@ uint32_t creat_mem_pool(mem_pool *pr_pool,void * pr,uint32_t len,uint32_t deep)
 	while(deep%8>0)
 	{
 		pr_pool->free[deep/8]=(pr_pool->free[deep/8]<<1)|(0x01);
+		deep--;
 	}
 	
 	while(deep/8>0)
@@ -135,7 +136,7 @@ uint32_t creat_mem_pool(mem_pool *pr_pool,void * pr,uint32_t len,uint32_t deep)
 		
 		list_add_behind(&(pr_pool->list),spr_tail_pool);
 	}
-
+	exit_critical_area();
 
 	
 	return mempool_true;
@@ -154,6 +155,7 @@ void * get_mem_from_pool(mem_pool *pr_pool,uint32_t len)
 		mempool_false;
 		return NULL;
 	}
+	input_critical_area();
 
 	for(i=0;i<pr_pool->deep;i++)
 	{	
@@ -162,20 +164,26 @@ void * get_mem_from_pool(mem_pool *pr_pool,uint32_t len)
 		{
 			//将内存地址return,并将对应的free位清0
 			__clearnbit_array(pr_pool->free,i);
-			
+
+			exit_critical_area();
 			return ((void *)(pr_pool->pr_start))+len*i;
 			
 			break;
 		}
 	}
 	mempool_empty;
+
+	exit_critical_area();
+
+	
 	return NULL;
 }
 
-uint32_t free_mem_to_pool(void *pr)
+uint32_t free_mem_to_pool(void **pr_free)
 {
 	struct __link_list *cur=NULL;	
 	mem_pool * pr_pool=NULL;
+	void * pr=*pr_free;
 	uint32_t deep=0;
 	if(pr==NULL)
 	{
@@ -185,6 +193,8 @@ uint32_t free_mem_to_pool(void *pr)
 	{
 		return mempool_unused;
 	}
+
+	input_critical_area();
 
 	cur=spr_head_pool;
 	do
@@ -200,6 +210,7 @@ uint32_t free_mem_to_pool(void *pr)
 	
 	if(pr_pool==NULL)
 	{
+		exit_critical_area();
 		return mempool_false;
 	}
 
@@ -209,8 +220,15 @@ uint32_t free_mem_to_pool(void *pr)
 		if((pr>=(pr_pool->pr_start+deep*pr_pool->len))&&(pr<(pr_pool->pr_start+(deep+1)*pr_pool->len)))
 		{
 			__setnbit_array(pr_pool->free,deep);
+			*pr_free=NULL;
 			break;
 		}
+	}
+
+	exit_critical_area();
+	if(*pr_free!=NULL)
+	{
+		return mempool_false;
 	}
 
 	return mempool_true;
