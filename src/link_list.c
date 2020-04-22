@@ -3,7 +3,7 @@
 #include <stdint.h>
 #include "link_list.h"
 #include "null.h"
-
+#include "os_def.h"
 
 
 //#define numofbuffer(a)		(sizeof(a)/sizeof(a[0]))
