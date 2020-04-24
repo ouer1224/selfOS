@@ -21,7 +21,7 @@ enum _State_Task
 };
 
 
-struct mdos_task_struct {
+struct selfos_task_struct {
 	uint32_t *pTopOfStack;   /* ’ª∂•µÿ÷∑ */
 	enum _State_Task state;
 	uint32_t wake_time;
@@ -38,18 +38,18 @@ struct mdos_task_struct {
 
 
 
-typedef void(*mdos_task)(void);
+typedef void(*selfos_task)(void);
 
 
-extern volatile struct mdos_task_struct *gp_mdos_cur_task;
-extern volatile struct mdos_task_struct *gp_mdos_next_task;
+extern volatile struct selfos_task_struct *gp_selfos_cur_task;
+extern volatile struct selfos_task_struct *gp_selfos_next_task;
 
-void mdos_start(void);
-void mdos_context_switch(void);
-void mdos_pendsv_handler(void);
+void selfos_start(void);
+//void selfos_context_switch(void);
+//void selfos_pendsv_handler(void);
 
-void mdos_create_task(struct mdos_task_struct *tcb, mdos_task task, uint32_t *stk);
-void mdos_distroy_task(void);
+void selfos_create_task(struct selfos_task_struct *tcb, selfos_task task, uint32_t *stk);
+void selfos_distroy_task(void);
 
 uint8_t OS_readyToSwitch(void);
 

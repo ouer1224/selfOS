@@ -88,7 +88,7 @@ content_save:
 
 #endif
 
-	ldr r2,=gp_mdos_cur_task
+	ldr r2,=gp_selfos_cur_task
 	ldr r1,[r2]		//获取到当前任务放栈地址的空间地址
 
 	str r0,[r1]		//save new stack addr
@@ -102,7 +102,7 @@ content_save:
 	pop {lr}
 content_load:
 
-	ldr r0,=gp_mdos_cur_task
+	ldr r0,=gp_selfos_cur_task
 	ldr r0,[r0]
 	ldr r0,[r0]		//get the cur task stack
 #if 0

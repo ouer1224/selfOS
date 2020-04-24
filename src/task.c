@@ -1,7 +1,7 @@
 
 
 
-/*mdos的含义是module os,可以通过修改接口的方式,对调度算法,内存管理,消息的传递*/
+/*selfos的含义是兴趣使然的os*/
 
 #include "null.h"
 #include "cortex_m4_register.h"
@@ -15,8 +15,8 @@
 
 
 
-volatile struct  mdos_task_struct  *gp_mdos_cur_task=NULL;
-volatile struct  mdos_task_struct  *gp_mdos_next_task=NULL;
+volatile struct  selfos_task_struct  *gp_selfos_cur_task=NULL;
+volatile struct  selfos_task_struct  *gp_selfos_next_task=NULL;
 
 volatile uint32_t gOS_sys_time=0;
 
@@ -32,7 +32,7 @@ static struct __link_list *spr_tail_spd_link=&shead_suspend_link;
 
 /*idle任务创建的环境*/
 #define SIZE_STACK_TASK_IDLE	48
-volatile struct mdos_task_struct task_idle;
+volatile struct selfos_task_struct task_idle;
 static unsigned int task_idle_Stk[SIZE_STACK_TASK_IDLE];
 
 
@@ -62,12 +62,12 @@ void OStaskDelay(uint32_t dly)
 	}
 
 	input_critical_area();
-	gp_mdos_cur_task->state=OS_SUSPEND;
-	gp_mdos_cur_task->wake_time=get_OS_sys_count()+dly;	//需要判断计数溢出的问题
+	gp_selfos_cur_task->state=OS_SUSPEND;
+	gp_selfos_cur_task->wake_time=get_OS_sys_count()+dly;	//需要判断计数溢出的问题
 	exit_critical_area();
 	
 	OS_readyToSwitch();
-	while(gp_mdos_cur_task->state==OS_SUSPEND);
+	while(gp_selfos_cur_task->state==OS_SUSPEND);
 	
 }
 
@@ -89,11 +89,11 @@ void taskidle(void)
 
 
 
-void mdos_start (void)
+void selfos_start (void)
 {
 
 	//添加idle任务
-	mdos_create_task(&task_idle,taskidle,&task_idle_Stk[SIZE_STACK_TASK_IDLE - 1]);
+	selfos_create_task(&task_idle,taskidle,&task_idle_Stk[SIZE_STACK_TASK_IDLE - 1]);
 
 #if 0		//systick
 	SCB_SHPR3=0xff<<16;
@@ -125,7 +125,7 @@ void mdos_start (void)
 }
 
 
-void mdos_distroy_task() {
+void selfos_distroy_task() {
 
     while(1){
     	__asm
@@ -134,7 +134,7 @@ void mdos_distroy_task() {
 }
 
 
-void mdos_create_task(struct mdos_task_struct * tcb, mdos_task task, uint32_t * stk)
+void selfos_create_task(struct selfos_task_struct * tcb, selfos_task task, uint32_t * stk)
 {
 	uint32_t  *pstk;
     pstk = stk;
@@ -162,7 +162,7 @@ void mdos_create_task(struct mdos_task_struct * tcb, mdos_task task, uint32_t * 
 
     *(--pstk) = (uint32_t)0x01000000uL; // xPSR
     *(--pstk) = (uint32_t)task;         // Entry Point
-    *(--pstk) = (uint32_t)mdos_distroy_task;; // R14 (LR)
+    *(--pstk) = (uint32_t)selfos_distroy_task;; // R14 (LR)
     *(--pstk) = (uint32_t)12121212; // R12
     *(--pstk) = (uint32_t)03030303; // R3
     *(--pstk) = (uint32_t)02020202; // R2
@@ -184,17 +184,17 @@ void mdos_create_task(struct mdos_task_struct * tcb, mdos_task task, uint32_t * 
 
 
 	/*将任务添加到链表中*/
-	if(gp_mdos_cur_task==NULL)
+	if(gp_selfos_cur_task==NULL)
 	{
-		gp_mdos_cur_task=tcb;
-		gp_mdos_cur_task->link.pre=&(gp_mdos_cur_task->link);
-		gp_mdos_cur_task->link.next=&(gp_mdos_cur_task->link);
+		gp_selfos_cur_task=tcb;
+		gp_selfos_cur_task->link.pre=&(gp_selfos_cur_task->link);
+		gp_selfos_cur_task->link.next=&(gp_selfos_cur_task->link);
 
 	}
 	else
 	{
-		list_add_behind(&(tcb->link),&(gp_mdos_cur_task->link));
-		gp_mdos_cur_task=tcb;
+		list_add_behind(&(tcb->link),&(gp_selfos_cur_task->link));
+		gp_selfos_cur_task=tcb;
 	}
 
 
@@ -204,29 +204,29 @@ void mdos_create_task(struct mdos_task_struct * tcb, mdos_task task, uint32_t * 
 /*获取下一个任务的tcb指针*/
 void get_next_TCB(void)
 {
-	struct mdos_task_struct *pr=NULL;
+	struct selfos_task_struct *pr=NULL;
 	struct __link_list *pr_spd=NULL,*pr_spd_next=NULL;
 
 #if 0
 	do
 	{
-		gp_mdos_cur_task=container_of(gp_mdos_cur_task->link.next,struct mdos_task_struct,link);
+		gp_selfos_cur_task=container_of(gp_selfos_cur_task->link.next,struct selfos_task_struct,link);
 	
-		if(gp_mdos_cur_task->state==OS_SUSPEND)
+		if(gp_selfos_cur_task->state==OS_SUSPEND)
 		{
-			if(gp_mdos_cur_task->wake_time<=get_OS_sys_count())
+			if(gp_selfos_cur_task->wake_time<=get_OS_sys_count())
 			{
-				gp_mdos_cur_task->state=OS_RUN;
+				gp_selfos_cur_task->state=OS_RUN;
 			}
 		}
-	}while(gp_mdos_cur_task->state!=OS_RUN);
+	}while(gp_selfos_cur_task->state!=OS_RUN);
 #else
 	do
 	{
-		if(gp_mdos_cur_task->state==OS_SUSPEND)
+		if(gp_selfos_cur_task->state==OS_SUSPEND)
 		{
-			pr=gp_mdos_cur_task;
-			gp_mdos_cur_task=container_of(gp_mdos_cur_task->link.next,struct mdos_task_struct,link);
+			pr=gp_selfos_cur_task;
+			gp_selfos_cur_task=container_of(gp_selfos_cur_task->link.next,struct selfos_task_struct,link);
 			
 			list_del(&(pr->link));
 
@@ -246,10 +246,10 @@ void get_next_TCB(void)
 		}
 		else
 		{
-			gp_mdos_cur_task=container_of(gp_mdos_cur_task->link.next,struct mdos_task_struct,link);
+			gp_selfos_cur_task=container_of(gp_selfos_cur_task->link.next,struct selfos_task_struct,link);
 		}
 	}
-	while(gp_mdos_cur_task->state!=OS_RUN);
+	while(gp_selfos_cur_task->state!=OS_RUN);
 
 
 	pr_spd=&shead_suspend_link;
@@ -265,14 +265,14 @@ void get_next_TCB(void)
 		pr_spd=pr_spd_next;//获取当前需要处理的节点的位置
 		pr_spd_next=pr_spd->next;//保存下个节点的位置.避免当前节点删除后,找不到下个节点
 	
-		pr=container_of(pr_spd,struct mdos_task_struct,link);
+		pr=container_of(pr_spd,struct selfos_task_struct,link);
 		
 		if(pr->wake_time<=get_OS_sys_count())
 		{
 			pr->state=OS_RUN;
 			list_del(&(pr->link));
 
-			list_add_before(&(pr->link),&(gp_mdos_cur_task->link));
+			list_add_before(&(pr->link),&(gp_selfos_cur_task->link));
 			
 		}
 	}

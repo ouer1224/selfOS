@@ -49,9 +49,9 @@ uint32_t count_sp=0;
 uint32_t addr_psp=0;
 
 
-volatile struct mdos_task_struct taskA;
-volatile struct mdos_task_struct taskB;
-volatile struct mdos_task_struct taskC;
+volatile struct selfos_task_struct taskA;
+volatile struct selfos_task_struct taskB;
+volatile struct selfos_task_struct taskC;
 
 
 
@@ -301,9 +301,9 @@ int main(void)
 
 
 
-	mdos_create_task(&taskA, taska, &taskC_Stk[TASKA_STK_SIZE - 1]);  
-	mdos_create_task(&taskB, taskb, &taskD_Stk[TASKA_STK_SIZE - 1]);  
-	mdos_create_task(&taskC, taskc, &taskE_Stk[TASKA_STK_SIZE - 1]);
+	selfos_create_task(&taskA, taska, &taskC_Stk[TASKA_STK_SIZE - 1]);  
+	selfos_create_task(&taskB, taskb, &taskD_Stk[TASKA_STK_SIZE - 1]);  
+	selfos_create_task(&taskC, taskc, &taskE_Stk[TASKA_STK_SIZE - 1]);
 
 
 	/*创建队列*/
@@ -317,7 +317,7 @@ int main(void)
 
 
   ENABLE_INTERRUPTS();
-  mdos_start();
+  selfos_start();
 
 
   int i=0;
