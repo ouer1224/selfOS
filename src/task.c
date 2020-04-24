@@ -61,8 +61,11 @@ void OStaskDelay(uint32_t dly)
 		return;
 	}
 
+	input_critical_area();
 	gp_mdos_cur_task->state=OS_SUSPEND;
 	gp_mdos_cur_task->wake_time=get_OS_sys_count()+dly;	//需要判断计数溢出的问题
+	exit_critical_area();
+	
 	OS_readyToSwitch();
 	while(gp_mdos_cur_task->state==OS_SUSPEND);
 	

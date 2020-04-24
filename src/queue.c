@@ -44,7 +44,7 @@
 extern void OStaskDelay(uint32_t dly);
 
 
-uint32_t creat_queue(QueueCB *pr_q,void * mem,uint32_t deep)
+uint32_t queue_creat(QueueCB *pr_q,void * mem,uint32_t deep)
 {
 	if((pr_q==NULL)||(mem==NULL))
 	{

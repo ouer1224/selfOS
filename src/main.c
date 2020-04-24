@@ -16,6 +16,7 @@
 
 #include "mem_manage.h"
 #include "queue.h"
+#include "sem.h"
 
 
 
@@ -67,6 +68,11 @@ static uint8_t buf_mem[LEN_TASKA_MEM*DEEP_TASKA_MEM];
 #define DEEP_QUEUE_TASKB	12
 static uint32_t queue_mem_taskb[DEEP_QUEUE_TASKB];
 QueueCB queue_taskb;
+
+/*---sem---*/
+
+SemCB sem_prevent_taskc;
+
 
 
 
@@ -209,7 +215,7 @@ void taska(void)
 	}	
 	while (1) 
 	{
-		TaskDelay(100);
+		TaskDelay(1000);
 		task_blink_red();
 		for(i=0;i<LEN_TASKA_MEM;i++)
 		{
@@ -249,6 +255,8 @@ void taskb(void)
 			free_mem_to_pool(&pr_rcv);
 			
 			task_blink_green();
+
+			sem_release(&sem_prevent_taskc);
 		}	
 
 
@@ -256,11 +264,22 @@ void taskb(void)
 }
 void taskc(void) 
 {
+
+	uint32_t rc=0;
+
 	TaskDelay(1500);	
     while (1) 
 	{
-		TaskDelay(1000);
-		task_blink_blue();
+		TaskDelay(200);
+		
+		rc=sem_acquire(&sem_prevent_taskc,4000);
+		if(rc==os_true)
+		{
+			task_blink_blue();
+		}
+
+
+		
     }
 }
 
@@ -288,9 +307,11 @@ int main(void)
 
 
 	/*创建队列*/
-	creat_queue(&queue_taskb,queue_mem_taskb,DEEP_QUEUE_TASKB);
+	queue_creat(&queue_taskb,queue_mem_taskb,DEEP_QUEUE_TASKB);
 
 
+	/*创建信号量*/
+	sem_creat(&sem_prevent_taskc,1, 1);
 
 
 

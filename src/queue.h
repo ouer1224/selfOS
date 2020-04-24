@@ -18,7 +18,7 @@ typedef struct
 }QueueCB;
 
 
-uint32_t creat_queue(QueueCB *pr_q,void * mem,uint32_t deep);
+uint32_t queue_creat(QueueCB *pr_q,void * mem,uint32_t deep);
 uint32_t put_dat_to_queue(QueueCB *pr_q,void * pr_dat,uint32_t delay,uint32_t pos);
 uint32_t get_dat_from_queue(QueueCB *pr_q,void ** pr_dat,uint32_t delay,uint32_t pos);
 
