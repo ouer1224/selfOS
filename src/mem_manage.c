@@ -37,7 +37,8 @@
 
 
 
-
+/*将所有的内存块放入了链表中,仅仅是为了free时可以直接free,而不用再写内存块的指针.
+下面的两个静态指针,是用于指向内存块的*/
 static struct __link_list	*spr_head_pool=NULL;
 static struct __link_list	*spr_tail_pool=NULL;
 

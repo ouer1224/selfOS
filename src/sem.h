@@ -6,5 +6,19 @@
 #include "null.h"
 
 
+/*sem control block*/
+typedef struct
+{
+	uint32_t maxVal;
+	uint32_t curVal;
+}SemCB;
+
+
+uint32_t sem_creat(SemCB * pr,uint32_t maxVal,uint32_t initVal);
+uint32_t sem_acquire(SemCB *pr);
+void sem_release(SemCB *pr);
+
+
+
 #endif
 

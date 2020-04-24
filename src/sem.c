@@ -4,15 +4,8 @@
 #include "sem.h"
 
 
-typedef struct
-{
-	uint32_t maxVal;
-	uint32_t curVal;
-}SEM;
 
-
-
-uint32_t sem_creat(SEM * pr,uint32_t maxVal,uint32_t initVal)
+uint32_t sem_creat(SemCB * pr,uint32_t maxVal,uint32_t initVal)
 {
 	if(pr==NULL)
 	{
@@ -32,7 +25,7 @@ uint32_t sem_creat(SEM * pr,uint32_t maxVal,uint32_t initVal)
 }
 
 /*获取信号量*/
-uint32_t sem_acquire(SEM *pr)
+uint32_t sem_acquire(SemCB *pr)
 {
 	uint32_t rt=os_false;
 	if(pr==NULL)
@@ -56,19 +49,20 @@ uint32_t sem_acquire(SEM *pr)
 
 }
 
-/*获取信号量*/
-uint32_t sem_take(SEM *pr)
+/*释放信号量*/
+void sem_release(SemCB *pr)
 {
-	uint32_t rt=os_true;
+
 	if(pr==NULL)
 	{
-		return os_null_pr;
+		return ;
 	}
 	input_critical_area();
 
 	if(pr->curVal<pr->maxVal)
 	{
 		pr->curVal++;
+		;
 	}
 	else
 	{
@@ -76,8 +70,7 @@ uint32_t sem_take(SEM *pr)
 	}
 	exit_critical_area();
 
-	return rt;
-
+	return;
 }
 
 

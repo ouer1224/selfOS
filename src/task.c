@@ -52,11 +52,14 @@ uint8_t OS_readyToSwitch(void)
 }
 
 /*比如设置无限等待时的处理措施*/
+/*无限等待的功能,可以听过在tcb中添加一个无限等待的标志去实现.*/
 void OStaskDelay(uint32_t dly)
 {
 
-//	list_del(&(gp_mdos_cur_task->link));
-	
+	if(dly<=0)
+	{
+		return;
+	}
 
 	gp_mdos_cur_task->state=OS_SUSPEND;
 	gp_mdos_cur_task->wake_time=get_OS_sys_count()+dly;	//需要判断计数溢出的问题
@@ -67,9 +70,7 @@ void OStaskDelay(uint32_t dly)
 
 void TaskDelay(uint32_t dly)
 {
-
 	OStaskDelay(dly);
-
 }
 
 

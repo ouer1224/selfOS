@@ -15,6 +15,7 @@
 #include "null.h"
 
 #include "mem_manage.h"
+#include "queue.h"
 
 
 
@@ -51,15 +52,26 @@ volatile struct mdos_task_struct taskA;
 volatile struct mdos_task_struct taskB;
 volatile struct mdos_task_struct taskC;
 
+
+
+/*---mem pool---*/
 #define LEN_TASKA_MEM	12
 #define DEEP_TASKA_MEM	15
 
 static mem_pool smem_test;
 static uint8_t buf_mem[LEN_TASKA_MEM*DEEP_TASKA_MEM];
-static void * pr_tran=NULL,*pr_send=NULL,*pr_rcv=NULL;
 
 
 
+/*----queue---*/
+#define DEEP_QUEUE_TASKB	12
+static uint32_t queue_mem_taskb[DEEP_QUEUE_TASKB];
+QueueCB queue_taskb;
+
+
+
+
+/*-----函数---*/
 void WDOG_disable (void){
   WDOG->CNT=0xD928C520; 	/* Unlock watchdog */
   WDOG->TOVAL=0x0000FFFF;	/* Maximum timeout value */
@@ -184,7 +196,10 @@ void FTM3_Ovf_Reload_IRQHandler (void)
 void taska(void) 
 {
 	uint32_t rc=0;
+	uint32_t count=0;
 	uint32_t i=0;
+	uint8_t buf_a[LEN_TASKA_MEM+4];
+	uint8_t *pr_send=NULL;
 	TaskDelay(500);
 
 	rc=creat_mem_pool(&smem_test,buf_mem,LEN_TASKA_MEM,DEEP_TASKA_MEM);
@@ -196,21 +211,23 @@ void taska(void)
 	{
 		TaskDelay(100);
 		task_blink_red();
+		for(i=0;i<LEN_TASKA_MEM;i++)
+		{
+			*((uint8_t *)buf_a+i)=i+count;
+		}
+		count++;
+		
 		pr_send=get_mem_from_pool(&smem_test,LEN_TASKA_MEM);
-		if(pr_send==NULL)
+		if(pr_send!=NULL)
 		{
-			
-		}
-		else
-		{
-			pr_tran=pr_send;
-			for(i=0;i<LEN_TASKA_MEM;i++)
+			os_memcpy(pr_send,buf_a,LEN_TASKA_MEM);
+			rc=put_dat_to_queue(&queue_taskb,pr_send,2000,0);
+			if(rc!=os_true)
 			{
-				*((uint8_t *)pr_tran+i)=i+rc;
+				;
 			}
-			rc++;
-
 		}
+
 
 	}
 
@@ -218,24 +235,23 @@ void taska(void)
 
 void taskb(void) 
 {
-	uint8_t buf[24];
+	uint8_t buf_b[24];
+	uint32_t rc=0;
+	uint8_t *pr_rcv=NULL;
 	TaskDelay(1000);	
     while (1) 
 	{
 
-		if(pr_tran==NULL)
+		rc=get_dat_from_queue(&queue_taskb, &pr_rcv,3000, 0);
+		if(rc==os_true)
 		{
+			os_memcpy(buf_b,pr_rcv,LEN_TASKA_MEM);
+			free_mem_to_pool(&pr_rcv);
 			
-		}
-		else
-		{
-			pr_rcv=pr_tran;
-			os_memcpy(buf,pr_rcv,LEN_TASKA_MEM);
-			free_mem_to_pool(&pr_tran);
-		}
-	
-		TaskDelay(200);
-		task_blink_green();
+			task_blink_green();
+		}	
+
+
     }
 }
 void taskc(void) 
@@ -269,6 +285,13 @@ int main(void)
 	mdos_create_task(&taskA, taska, &taskC_Stk[TASKA_STK_SIZE - 1]);  
 	mdos_create_task(&taskB, taskb, &taskD_Stk[TASKA_STK_SIZE - 1]);  
 	mdos_create_task(&taskC, taskc, &taskE_Stk[TASKA_STK_SIZE - 1]);
+
+
+	/*创建队列*/
+	creat_queue(&queue_taskb,queue_mem_taskb,DEEP_QUEUE_TASKB);
+
+
+
 
 
 

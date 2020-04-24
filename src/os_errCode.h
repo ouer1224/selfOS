@@ -15,6 +15,7 @@ typedef struct
 {
 	__ErrCode fun;
 	__ErrCode memPool;
+	__ErrCode queue;
 	__ErrCode task;
 	__ErrCode list;
 }ErrCode;

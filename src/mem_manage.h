@@ -17,7 +17,7 @@ typedef struct
 	uint8_t allocated[NUM_MEM_POOL_LIST];
 	void *pr_end;
 	void *pr_start;
-	struct __link_list list;
+	struct __link_list list;	//用于指向下一个内存块的位置,将所有声明的内存块进行了链接,方便free函数的实现
 }mem_pool;
 
 
