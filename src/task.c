@@ -92,9 +92,9 @@ void OS_setCurInfoSpdTask(uint32_t source,uint32_t dly)
 	gp_selfos_cur_task->wake_time=get_OS_sys_count()+dly; //需要判断计数溢出的问题
 	gp_selfos_cur_task->spd_source=source;
 
-	if(gp_selfos_cur_task->wake_time<sInfo_slp_task.recent_wake)
+	if(gp_selfos_cur_task->wake_time<sInfo_spd_task.recent_wake)
 	{
-		sInfo_slp_task.recent_wake=gp_selfos_cur_task->wake_time;
+		sInfo_spd_task.recent_wake=gp_selfos_cur_task->wake_time;
 	}
 
 
@@ -388,7 +388,7 @@ void get_next_TCB(void)
 			}
 
 			/*找出新的最近的唤醒时间*/
-			if(sInfo_slp_task.recent_wake<pr->wake_time)
+			if(sInfo_slp_task.recent_wake>pr->wake_time)
 			{
 				sInfo_slp_task.recent_wake=pr->wake_time;	
 				sInfo_slp_task.recent_task=pr;

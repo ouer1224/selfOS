@@ -91,12 +91,13 @@ uint32_t sem_acquire(SemCB *pr,uint32_t delay)
 
 		exit_critical_area();
 
-		OS_readyToSwitch();
-		while(gp_selfos_cur_task->state==OS_SUSPEND);
 
 		rc=os_true;
 		if(delay>0)
 		{
+			OS_readyToSwitch();
+			while(gp_selfos_cur_task->state==OS_SUSPEND);
+			
 			if(gp_selfos_cur_task->spd_source==os_spd_timeout)
 			{
 				gp_selfos_cur_task->spd_source=os_spd_init;
