@@ -96,17 +96,52 @@ void OS_setCurInfoSpdTask(uint32_t source,uint32_t dly)
 	{
 		sInfo_spd_task.recent_wake=gp_selfos_cur_task->wake_time;
 	}
-
-
-
-	
 }
 
 
+void OS_relSpdTask(uint32_t source)
+{
+	struct selfos_task_struct *pr=NULL;
+	struct __link_list *pr_link=NULL,*pr_link_next=NULL;
+
+	pr_link=&shead_suspend_link;
+	pr_link_next=pr_link->next;
+	while((pr_link_next!=(&shead_suspend_link)))
+	{
+		
+		if((pr_link_next==NULL)) //链表尚未初始化
+		{
+			break;
+		}
+		
+		pr_link=pr_link_next;//获取当前需要处理的节点的位置
+		pr_link_next=pr_link->next;//保存下个节点的位置.避免当前节点删除后,找不到下个节点
+	
+		pr=container_of(pr_link,struct selfos_task_struct,link);
+		
+		if(pr->spd_source==source)
+		{
+			pr->state=OS_RUN;
+			pr->wake_time=0xffffffff;
+			pr->spd_source=os_spd_init;
+			list_del(&(pr->link));
+	
+			list_add_before(&(pr->link),&(gp_selfos_cur_task->link));	
+	
+			continue;
+		}
+	
+		/*找出新的最近的唤醒时间*/
+		if(sInfo_spd_task.recent_wake>pr->wake_time)
+		{
+			sInfo_spd_task.recent_wake=pr->wake_time;	
+			sInfo_spd_task.recent_task=pr;
+		}
+		
+	}
 
 
-
-
+}
 /*比如设置无限等待时的处理措施*/
 /*无限等待的功能,可以听过在tcb中添加一个无限等待的标志去实现.*/
 void OStaskDelay(uint32_t dly)
@@ -260,7 +295,7 @@ void selfos_create_task(struct selfos_task_struct * tcb, selfos_task task, uint3
 void get_next_TCB(void)
 {
 	struct selfos_task_struct *pr=NULL;
-	struct __link_list *pr_slp=NULL,*pr_slp_next=NULL;
+	struct __link_list *pr_link=NULL,*pr_link_next=NULL;
 
 #if 0
 	do
@@ -313,20 +348,20 @@ void get_next_TCB(void)
 	{
 		sInfo_slp_task.recent_wake=0xffffffff;
 
-		pr_slp=&shead_sleep_link;
-		pr_slp_next=pr_slp->next;
-		while((pr_slp_next!=(&shead_sleep_link)))
+		pr_link=&shead_sleep_link;
+		pr_link_next=pr_link->next;
+		while((pr_link_next!=(&shead_sleep_link)))
 		{
 			
-			if((pr_slp_next==NULL))	//链表尚未初始化
+			if((pr_link_next==NULL))	//链表尚未初始化
 			{
 				break;
 			}
 			
-			pr_slp=pr_slp_next;//获取当前需要处理的节点的位置
-			pr_slp_next=pr_slp->next;//保存下个节点的位置.避免当前节点删除后,找不到下个节点
+			pr_link=pr_link_next;//获取当前需要处理的节点的位置
+			pr_link_next=pr_link->next;//保存下个节点的位置.避免当前节点删除后,找不到下个节点
 		
-			pr=container_of(pr_slp,struct selfos_task_struct,link);
+			pr=container_of(pr_link,struct selfos_task_struct,link);
 			
 			if(pr->wake_time<=get_OS_sys_count())
 			{
@@ -360,20 +395,20 @@ void get_next_TCB(void)
 	{
 		sInfo_spd_task.recent_wake=0xffffffff;
 
-		pr_slp=&shead_suspend_link;
-		pr_slp_next=pr_slp->next;
-		while((pr_slp_next!=(&shead_suspend_link)))
+		pr_link=&shead_suspend_link;
+		pr_link_next=pr_link->next;
+		while((pr_link_next!=(&shead_suspend_link)))
 		{
 			
-			if((pr_slp_next==NULL))	//链表尚未初始化
+			if((pr_link_next==NULL))	//链表尚未初始化
 			{
 				break;
 			}
 			
-			pr_slp=pr_slp_next;//获取当前需要处理的节点的位置
-			pr_slp_next=pr_slp->next;//保存下个节点的位置.避免当前节点删除后,找不到下个节点
+			pr_link=pr_link_next;//获取当前需要处理的节点的位置
+			pr_link_next=pr_link->next;//保存下个节点的位置.避免当前节点删除后,找不到下个节点
 		
-			pr=container_of(pr_slp,struct selfos_task_struct,link);
+			pr=container_of(pr_link,struct selfos_task_struct,link);
 			
 			if(pr->wake_time<=get_OS_sys_count())
 			{
@@ -388,10 +423,10 @@ void get_next_TCB(void)
 			}
 
 			/*找出新的最近的唤醒时间*/
-			if(sInfo_slp_task.recent_wake>pr->wake_time)
+			if(sInfo_spd_task.recent_wake>pr->wake_time)
 			{
-				sInfo_slp_task.recent_wake=pr->wake_time;	
-				sInfo_slp_task.recent_task=pr;
+				sInfo_spd_task.recent_wake=pr->wake_time;	
+				sInfo_spd_task.recent_task=pr;
 			}
 
 			

@@ -69,6 +69,19 @@ uint32_t queue_creat(QueueCB *pr_q,void * mem,uint32_t deep)
 	return queue_true;
 }
 
+
+uint8_t IfQueueFull(QueueCB *pr_q)
+{
+
+	return (pr_q->num_cur>=pr_q->num_max);
+}
+
+
+uint8_t IfQueueEmpty(QueueCB *pr_q)
+{
+	return (pr_q->num_cur<=0);
+}
+
 /*插入一个数据到指定的队列中*/
 uint32_t __inser_dat_to_queue(QueueCB *pr_q,void * pr_dat,uint32_t pos)
 {
@@ -138,40 +151,75 @@ uint32_t __acquire_dat_from_queue(QueueCB *pr_q,void ** pr_dat,uint32_t pos)
 uint32_t put_dat_to_queue(QueueCB *pr_q,void * pr_dat,uint32_t delay,uint32_t pos)
 {
 	uint32_t rc=os_false;
+	uint8_t need_rel=0;
 	
 	if((pr_q==NULL)||(pr_dat==NULL))
 	{
 		return queue_null_pr;
 	}
 
-	do{
 
 		input_critical_area();
-		rc=__inser_dat_to_queue(pr_q,pr_dat,pos);
 
-		if(rc==os_true)
+
+		if(IfQueueFull(pr_q)==1)
 		{
-			//放入成功
-			delay=0;
+			rc=os_false;
+			if(delay>0)
+			{
+				OS_setCurInfoSpdTask(((uint32_t)pr_q)|__queue_full__,delay);
+				OS_readyToSwitch();
+			}
+			
 		}
-		else if(rc==__queue_full__)
+		else
 		{
-			//满了,需要等待
-		}
-		else	//其他错误
-		{
-			delay=0;
+			rc=os_true;
+			if(IfQueueEmpty(pr_q)==1)
+			{
+				need_rel=1;
+			}
 		}
 
 		exit_critical_area();
 
-		if(delay>0)
-		{
-			OStaskDelay(1);
-			delay--;
-		}
-	}while(delay>0);
+		
 
+		if(rc==os_false)	//需要等待
+		{
+			if(delay>0)
+			{
+				while(gp_selfos_cur_task->state==OS_SUSPEND);
+				
+				if(gp_selfos_cur_task->spd_source==os_spd_timeout)
+				{
+					gp_selfos_cur_task->spd_source=os_spd_init;
+				}
+				else
+				{
+					rc=os_true;
+				}
+			}
+
+		}
+
+
+
+		input_critical_area();
+
+		if(rc==os_true)
+		{
+			rc=__inser_dat_to_queue(pr_q,pr_dat,pos);
+			
+			/*如果有其他任务可能在等待队列,并且队列写入成功了,则查询是否有任务在等待当前队列*/
+			if((rc==os_true)&&(need_rel==1))
+			{
+				OS_relSpdTask(((uint32_t)pr_q)|__queue_empty__);
+			}
+
+		}
+
+		exit_critical_area();
 
 
 	return rc;
@@ -181,43 +229,68 @@ uint32_t put_dat_to_queue(QueueCB *pr_q,void * pr_dat,uint32_t delay,uint32_t po
 uint32_t get_dat_from_queue(QueueCB *pr_q,void ** pr_dat,uint32_t delay,uint32_t pos)
 {
 	uint32_t rc=os_false;
+	uint8_t need_rel=0;
 
 	if((pr_q==NULL)||(pr_dat==NULL))
 	{
 		return queue_null_pr;
 	}
 	
-	do
-	{
+
 		input_critical_area();
-		rc=__acquire_dat_from_queue(pr_q,pr_dat,pos);
-		if(rc==os_true)
+
+		if(IfQueueEmpty(pr_q)==1)
 		{
-			delay=0;
+
+			rc=os_false;
+			if(delay>0)
+			{
+				OS_setCurInfoSpdTask(((uint32_t)pr_q)|__queue_empty__,delay);
+
+				OS_readyToSwitch();
+			}			
 		}
-		else if(rc==os_false)
+		else
 		{
-			delay=0;
-		}
-		else if(rc==__queue_empty__)
-		{
-			//队列中没有数据,需要等待
-		}
-		else 
-		{
-			delay=0;
-		}
+			rc=os_true;
+			if(IfQueueFull(pr_q)==1)
+			{
+				need_rel=1;
+			}
+		}	
+
 		exit_critical_area();
 
-		
-		if(delay>0)
+		if((rc==os_false)&&(delay>0))
 		{
-			OStaskDelay(1);
-			delay--;
+		
+			while(gp_selfos_cur_task->state==OS_SUSPEND);
+			
+			if(gp_selfos_cur_task->spd_source==os_spd_timeout)
+			{
+				gp_selfos_cur_task->spd_source=os_spd_init;
+				rc=os_false;
+			}
+			else
+			{
+				rc=os_true;
+			}
 		}
 
-	}while(delay>0);
 
+		input_critical_area();
+		if(rc==os_true)
+		{
+			rc=__acquire_dat_from_queue(pr_q,pr_dat,pos);
+			if((rc==os_true)&&(need_rel==1))
+			{
+				
+				OS_relSpdTask(((uint32_t)pr_q)|__queue_full__);
+				
+			}
+			
+		}
+		exit_critical_area();
 
 	return rc;
 }

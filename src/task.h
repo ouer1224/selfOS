@@ -76,6 +76,7 @@ uint8_t OS_readyToSwitch(void);
 void OS_setCurInfoSlpTask(uint32_t dly);
 void OS_setCurInfoSpdTask(uint32_t source,uint32_t dly);
 
+void OS_relSpdTask(uint32_t source);
 
 
 

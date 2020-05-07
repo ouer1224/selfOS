@@ -112,22 +112,33 @@ uint32_t sem_acquire(SemCB *pr,uint32_t delay)
 /*ÊÍ·ÅÐÅºÅÁ¿*/
 void sem_release(SemCB *pr)
 {
-
+	uint8_t need_rel=0;
 	if(pr==NULL)
 	{
 		return ;
 	}
 	input_critical_area();
 
+	if(pr->curVal==0)
+	{
+
+	}
+
 	if(pr->curVal<pr->maxVal)
 	{
 		pr->curVal++;
-		;
 	}
 	else
 	{
 		;
 	}
+	if(need_rel==1)
+	{
+		OS_relSpdTask((uint32_t)pr);
+	}
+
+
+	
 	exit_critical_area();
 
 	return;
