@@ -63,8 +63,6 @@ uint32_t sem_acquire(SemCB *pr,uint32_t delay)
 	}
 
 
-	do{
-
 		input_critical_area();
 		rc=__sem_acquire(pr);
 		if(rc==os_true)
@@ -75,21 +73,37 @@ uint32_t sem_acquire(SemCB *pr,uint32_t delay)
 		{
 
 		}
+		else if(rc==os_null_pr)
+		{
+			delay=0;
+		}
 		else
 		{
 			delay=0;
 		}
 
-		exit_critical_area();
-
 		if(delay>0)
 		{
-			OStaskDelay(1);
-			delay--;
+
+			OS_setCurInfoSpdTask((uint32_t)pr,delay);
+
 		}
 
-	}while(delay>0);
-	
+		exit_critical_area();
+
+		OS_readyToSwitch();
+		while(gp_selfos_cur_task->state==OS_SUSPEND);
+
+		rc=os_true;
+		if(delay>0)
+		{
+			if(gp_selfos_cur_task->spd_source==os_spd_timeout)
+			{
+				gp_selfos_cur_task->spd_source=os_spd_init;
+				rc=os_false;
+			}
+		}
+
 
 	return rc;
 }

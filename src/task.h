@@ -8,6 +8,9 @@
 #include "os_def.h"
 
 
+#define os_spd_timeout		0xffffffff	
+#define os_spd_init			0
+
 
 extern volatile uint32_t gOS_sys_time;
 
@@ -25,8 +28,25 @@ struct selfos_task_struct {
 	uint32_t *pTopOfStack;   /* ’ª∂•µÿ÷∑ */
 	enum _State_Task state;
 	uint32_t wake_time;
+	uint32_t spd_source;
 	struct __link_list link;
 };
+
+
+struct selfos_slp_info
+{
+	uint32_t recent_wake;
+	struct selfos_task_struct * recent_task;
+};
+
+
+struct selfos_spd_info
+{
+	uint32_t recent_wake;
+	struct selfos_task_struct * recent_task;
+};
+
+
 
 
 
@@ -52,6 +72,15 @@ void selfos_create_task(struct selfos_task_struct *tcb, selfos_task task, uint32
 void selfos_distroy_task(void);
 
 uint8_t OS_readyToSwitch(void);
+
+void OS_setCurInfoSlpTask(uint32_t dly);
+void OS_setCurInfoSpdTask(uint32_t source,uint32_t dly);
+
+
+
+
+uint32_t put_task_into_other_state(struct __link_list **pr_tail,struct selfos_task_struct *pr_task);
+
 
 
 void TaskDelay(uint32_t dly);

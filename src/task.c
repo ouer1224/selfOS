@@ -15,23 +15,30 @@
 
 
 
+
 volatile struct  selfos_task_struct  *gp_selfos_cur_task=NULL;
 volatile struct  selfos_task_struct  *gp_selfos_next_task=NULL;
 
 volatile uint32_t gOS_sys_time=0;
 
 
+volatile struct selfos_slp_info		sInfo_slp_task={0xffffffff,NULL};
+volatile struct selfos_spd_info		sInfo_spd_task={0xffffffff,NULL};
 
-static struct __link_list shead_suspend_link={NULL,NULL};//该链表暂时无用
-static struct __link_list shead_sleep_link={NULL,NULL};//存放需要休眠的任务
+
+
+
+static struct __link_list shead_suspend_link={NULL,NULL};//暂停态任务的归宿
+static struct __link_list shead_sleep_link={NULL,NULL};//休眠任务的归宿
 
 static struct __link_list *spr_tail_spd_link=&shead_suspend_link;
+static struct __link_list *spr_tail_slp_link=&shead_sleep_link;
 
 
 
 
 /*idle任务创建的环境*/
-#define SIZE_STACK_TASK_IDLE	48
+#define SIZE_STACK_TASK_IDLE	64
 volatile struct selfos_task_struct task_idle;
 static unsigned int task_idle_Stk[SIZE_STACK_TASK_IDLE];
 
@@ -42,6 +49,13 @@ static unsigned int task_idle_Stk[SIZE_STACK_TASK_IDLE];
 #define tail_asm_frame		);
 
 
+#define IfTaskNeedUnSlp()		((sInfo_slp_task.recent_wake<=get_OS_sys_count())?1:0)
+
+#define IfTaskNeedUnSpd()		((sInfo_spd_task.recent_wake<=get_OS_sys_count())?1:0)
+
+
+
+
 
 
 uint8_t OS_readyToSwitch(void)
@@ -50,6 +64,48 @@ uint8_t OS_readyToSwitch(void)
 
 	return 1;
 }
+
+void OS_setCurInfoSlpTask(uint32_t dly)
+{
+
+	gp_selfos_cur_task->state=OS_SLEEP;
+	gp_selfos_cur_task->wake_time=get_OS_sys_count()+dly;	//需要判断计数溢出的问题
+
+
+	if(gp_selfos_cur_task->wake_time<sInfo_slp_task.recent_wake)
+	{
+		sInfo_slp_task.recent_wake=gp_selfos_cur_task->wake_time;
+	}
+
+
+
+
+
+
+}
+
+void OS_setCurInfoSpdTask(uint32_t source,uint32_t dly)
+{
+
+
+	gp_selfos_cur_task->state=OS_SUSPEND;
+	gp_selfos_cur_task->wake_time=get_OS_sys_count()+dly; //需要判断计数溢出的问题
+	gp_selfos_cur_task->spd_source=source;
+
+	if(gp_selfos_cur_task->wake_time<sInfo_slp_task.recent_wake)
+	{
+		sInfo_slp_task.recent_wake=gp_selfos_cur_task->wake_time;
+	}
+
+
+
+	
+}
+
+
+
+
+
 
 /*比如设置无限等待时的处理措施*/
 /*无限等待的功能,可以听过在tcb中添加一个无限等待的标志去实现.*/
@@ -62,12 +118,11 @@ void OStaskDelay(uint32_t dly)
 	}
 
 	input_critical_area();
-	gp_selfos_cur_task->state=OS_SUSPEND;
-	gp_selfos_cur_task->wake_time=get_OS_sys_count()+dly;	//需要判断计数溢出的问题
+	OS_setCurInfoSlpTask(dly);
 	exit_critical_area();
 	
 	OS_readyToSwitch();
-	while(gp_selfos_cur_task->state==OS_SUSPEND);
+	while(gp_selfos_cur_task->state==OS_SLEEP);
 	
 }
 
@@ -205,7 +260,7 @@ void selfos_create_task(struct selfos_task_struct * tcb, selfos_task task, uint3
 void get_next_TCB(void)
 {
 	struct selfos_task_struct *pr=NULL;
-	struct __link_list *pr_spd=NULL,*pr_spd_next=NULL;
+	struct __link_list *pr_slp=NULL,*pr_slp_next=NULL;
 
 #if 0
 	do
@@ -223,26 +278,24 @@ void get_next_TCB(void)
 #else
 	do
 	{
-		if(gp_selfos_cur_task->state==OS_SUSPEND)
+		if(gp_selfos_cur_task->state==OS_SLEEP)
+		{
+			pr=gp_selfos_cur_task;
+			gp_selfos_cur_task=container_of(gp_selfos_cur_task->link.next,struct selfos_task_struct,link);
+			list_del(&(pr->link));	
+
+			put_task_into_other_state(&spr_tail_slp_link,pr);
+			
+		}
+		else if(gp_selfos_cur_task->state==OS_SUSPEND)
 		{
 			pr=gp_selfos_cur_task;
 			gp_selfos_cur_task=container_of(gp_selfos_cur_task->link.next,struct selfos_task_struct,link);
 			
 			list_del(&(pr->link));
 
-			if(spr_tail_spd_link->next==NULL)
-			{
-				spr_tail_spd_link->next=&(pr->link);
-				spr_tail_spd_link->pre=&(pr->link);
+			put_task_into_other_state(&spr_tail_spd_link,pr);
 
-				pr->link.pre=spr_tail_spd_link;
-				pr->link.next=spr_tail_spd_link;
-			}
-			else
-			{
-				list_add_behind(&(pr->link), spr_tail_spd_link);
-			}
-			
 		}
 		else
 		{
@@ -252,36 +305,130 @@ void get_next_TCB(void)
 	while(gp_selfos_cur_task->state!=OS_RUN);
 
 
-	pr_spd=&shead_suspend_link;
-	pr_spd_next=pr_spd->next;
-	while((pr_spd_next!=(&shead_suspend_link)))
-	{
-		
-		if((pr_spd_next==NULL))	//链表尚未初始化
-		{
-			break;
-		}
-		
-		pr_spd=pr_spd_next;//获取当前需要处理的节点的位置
-		pr_spd_next=pr_spd->next;//保存下个节点的位置.避免当前节点删除后,找不到下个节点
-	
-		pr=container_of(pr_spd,struct selfos_task_struct,link);
-		
-		if(pr->wake_time<=get_OS_sys_count())
-		{
-			pr->state=OS_RUN;
-			list_del(&(pr->link));
 
-			list_add_before(&(pr->link),&(gp_selfos_cur_task->link));
+
+/*检查sleep的链表*/
+
+	if(IfTaskNeedUnSlp()==1)
+	{
+		sInfo_slp_task.recent_wake=0xffffffff;
+
+		pr_slp=&shead_sleep_link;
+		pr_slp_next=pr_slp->next;
+		while((pr_slp_next!=(&shead_sleep_link)))
+		{
+			
+			if((pr_slp_next==NULL))	//链表尚未初始化
+			{
+				break;
+			}
+			
+			pr_slp=pr_slp_next;//获取当前需要处理的节点的位置
+			pr_slp_next=pr_slp->next;//保存下个节点的位置.避免当前节点删除后,找不到下个节点
+		
+			pr=container_of(pr_slp,struct selfos_task_struct,link);
+			
+			if(pr->wake_time<=get_OS_sys_count())
+			{
+				pr->state=OS_RUN;
+				pr->wake_time=0xffffffff;
+				list_del(&(pr->link));
+
+				list_add_before(&(pr->link),&(gp_selfos_cur_task->link));	
+
+				continue;
+			}
+
+			/*找出新的最近的唤醒时间*/
+			if(sInfo_slp_task.recent_wake>pr->wake_time)
+			{
+				sInfo_slp_task.recent_wake=pr->wake_time;	
+				sInfo_slp_task.recent_task=pr;
+			}
+
 			
 		}
+
 	}
+
+
+/*检查suspend的链表*/
+	
+
+
+	if(IfTaskNeedUnSpd()==1)
+	{
+		sInfo_spd_task.recent_wake=0xffffffff;
+
+		pr_slp=&shead_suspend_link;
+		pr_slp_next=pr_slp->next;
+		while((pr_slp_next!=(&shead_suspend_link)))
+		{
+			
+			if((pr_slp_next==NULL))	//链表尚未初始化
+			{
+				break;
+			}
+			
+			pr_slp=pr_slp_next;//获取当前需要处理的节点的位置
+			pr_slp_next=pr_slp->next;//保存下个节点的位置.避免当前节点删除后,找不到下个节点
+		
+			pr=container_of(pr_slp,struct selfos_task_struct,link);
+			
+			if(pr->wake_time<=get_OS_sys_count())
+			{
+				pr->state=OS_RUN;
+				pr->wake_time=0xffffffff;
+				pr->spd_source=os_spd_timeout;
+				list_del(&(pr->link));
+
+				list_add_before(&(pr->link),&(gp_selfos_cur_task->link));	
+
+				continue;
+			}
+
+			/*找出新的最近的唤醒时间*/
+			if(sInfo_slp_task.recent_wake<pr->wake_time)
+			{
+				sInfo_slp_task.recent_wake=pr->wake_time;	
+				sInfo_slp_task.recent_task=pr;
+			}
+
+			
+		}
+
+	}
+
+
+
+
+	
+
 
 
 #endif
 	
 }
 
+
+uint32_t put_task_into_other_state(struct __link_list **pr_tail,struct selfos_task_struct *pr_task)
+{
+	
+	if((*pr_tail)->next==NULL)	//初始化
+	{
+		(*pr_tail)->next=&(pr_task->link);
+		(*pr_tail)->pre=&(pr_task->link);
+
+		pr_task->link.pre=(*pr_tail);
+		pr_task->link.next=(*pr_tail);
+	}
+	else
+	{
+		return list_add_behind(&(pr_task->link), (*pr_tail));
+	}
+
+	return os_true;
+}
 
 
 
