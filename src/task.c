@@ -16,8 +16,7 @@
 
 
 
-volatile struct  selfos_task_struct  *gp_selfos_cur_task=NULL;
-volatile struct  selfos_task_struct  *gp_selfos_next_task=NULL;
+
 
 volatile uint32_t gOS_sys_time=0;
 
@@ -27,12 +26,27 @@ volatile struct selfos_spd_info		sInfo_spd_task={0xffffffff,NULL};
 
 
 
-
+//static struct __link_list shead_run_link={NULL,NULL};//run任务的归宿
 static struct __link_list shead_suspend_link={NULL,NULL};//暂停态任务的归宿
 static struct __link_list shead_sleep_link={NULL,NULL};//休眠任务的归宿
 
 static struct __link_list *spr_tail_spd_link=&shead_suspend_link;
 static struct __link_list *spr_tail_slp_link=&shead_sleep_link;
+
+
+
+
+/*
+创建一个任务,优先级为0,作为任务链表的表头.该任务永远不会去执行.因为获取下一个需要运行的任务时,
+永远使用链表头的next的位置.
+由于默认创建idle的任务,因此链表头的next位置必定是有至少一个任务的.
+*/
+strcut selfos_task_struct task_topest={.priority=0};
+static struct __link_list *spr_head_task_link=&(task_topest.link);
+
+volatile struct  selfos_task_struct  *gp_selfos_cur_task=NULL;
+
+
 
 
 
@@ -183,7 +197,7 @@ void selfos_start (void)
 {
 
 	//添加idle任务
-	selfos_create_task(&task_idle,taskidle,&task_idle_Stk[SIZE_STACK_TASK_IDLE - 1]);
+	__selfos_create_task(&task_idle,taskidle,&task_idle_Stk[SIZE_STACK_TASK_IDLE - 1],255);
 
 #if 0		//systick
 	SCB_SHPR3=0xff<<16;
@@ -224,7 +238,7 @@ void selfos_distroy_task() {
 }
 
 
-void selfos_create_task(struct selfos_task_struct * tcb, selfos_task task, uint32_t * stk)
+uint32_t __selfos_create_task(struct selfos_task_struct * tcb, selfos_task task, uint32_t * stk ,uint32_t priority)
 {
 	uint32_t  *pstk;
     pstk = stk;
@@ -271,46 +285,48 @@ void selfos_create_task(struct selfos_task_struct * tcb, selfos_task task, uint3
     tcb->pTopOfStack = pstk;
 	tcb->state=OS_RUN;
 	tcb->wake_time=0;
-
+	tcb->priority=priority;
 
 	/*将任务添加到链表中*/
 	if(gp_selfos_cur_task==NULL)
 	{
 		gp_selfos_cur_task=tcb;
-		gp_selfos_cur_task->link.pre=&(gp_selfos_cur_task->link);
-		gp_selfos_cur_task->link.next=&(gp_selfos_cur_task->link);
+
+		spr_head_task_link->pre=&(gp_selfos_cur_task->link);
+		spr_head_task_link->next=&(gp_selfos_cur_task->link);
+		
+		gp_selfos_cur_task->link.next=spr_head_task_link;
+		gp_selfos_cur_task->link.pre=spr_head_task_link;
 
 	}
 	else
 	{
-		list_add_behind(&(tcb->link),&(gp_selfos_cur_task->link));
-		gp_selfos_cur_task=tcb;
+		put_task_into_certain_state(tcb, OS_RUN);	//根据优先级放入链表中.
 	}
 
-
+	return os_true;
 
 }
 
+
+uint32_t selfos_create_task(struct selfos_task_struct * tcb, selfos_task task, uint32_t * stk ,uint32_t priority)
+{
+	if((priority==0)||(priority==255))
+	{
+		return os_false;
+	}
+
+	__selfos_create_task(tcb,task,stk,priority);
+
+	return os_true;
+}
 /*获取下一个任务的tcb指针*/
 void get_next_TCB(void)
 {
 	struct selfos_task_struct *pr=NULL;
 	struct __link_list *pr_link=NULL,*pr_link_next=NULL;
 
-#if 0
-	do
-	{
-		gp_selfos_cur_task=container_of(gp_selfos_cur_task->link.next,struct selfos_task_struct,link);
-	
-		if(gp_selfos_cur_task->state==OS_SUSPEND)
-		{
-			if(gp_selfos_cur_task->wake_time<=get_OS_sys_count())
-			{
-				gp_selfos_cur_task->state=OS_RUN;
-			}
-		}
-	}while(gp_selfos_cur_task->state!=OS_RUN);
-#else
+
 	do
 	{
 		if(gp_selfos_cur_task->state==OS_SLEEP)
@@ -369,7 +385,8 @@ void get_next_TCB(void)
 				pr->wake_time=0xffffffff;
 				list_del(&(pr->link));
 
-				list_add_before(&(pr->link),&(gp_selfos_cur_task->link));	
+				//list_add_before(&(pr->link),&(gp_selfos_cur_task->link));	
+				put_task_into_certain_state(pr, OS_RUN);
 
 				continue;
 			}
@@ -417,7 +434,8 @@ void get_next_TCB(void)
 				pr->spd_source=os_spd_timeout;
 				list_del(&(pr->link));
 
-				list_add_before(&(pr->link),&(gp_selfos_cur_task->link));	
+				//list_add_before(&(pr->link),&(gp_selfos_cur_task->link));	
+				put_task_into_certain_state(pr, OS_RUN);
 
 				continue;
 			}
@@ -465,7 +483,54 @@ uint32_t put_task_into_other_state(struct __link_list **pr_tail,struct selfos_ta
 	return os_true;
 }
 
+uint32_t put_task_into_run_state(struct __link_list **pr_head,\
+								struct selfos_task_struct *pr_task)
+{
+	struct __link_list *pr_link=NULL;
+	struct selfos_task_struct *pr_task_tmp=NULL;
+	struct selfos_task_struct *pr_task_tmp_next=NULL;
 
+	if((*pr_head)->next==NULL)	//初始化
+	{
+		(*pr_head)->next=&(pr_task->link);
+		(*pr_head)->pre=&(pr_task->link);
+
+		pr_task->link.pre=(*pr_head);
+		pr_task->link.next=(*pr_head);
+	}
+	else
+	{
+		pr_link=pr_head;
+		pr_task_tmp=container_of(pr_link,struct selfos_task_struct,link);
+		pr_task_tmp_next=container_of(pr_link->next,struct selfos_task_struct,link);
+		
+		while((pr_link->next!=pr_head)||(pr_task->priority>=pr_task_tmp->priority)&&(pr_task->priority<pr_task_tmp_next->priority))
+		{
+
+		}
+		list_add_behind(&(pr_task->link), (*pr_head));
+	}
+
+	return os_true;
+}
+
+uint32_t put_task_into_certain_state(struct selfos_task_struct *pr_task,\
+									enum _State_Task flag)
+{
+	switch(flag)
+	{
+		case OS_RUN:
+		{
+			put_task_into_run_state(&spr_head_task_link,pr_task);
+		}
+		break;
+
+
+
+	}
+
+	return os_true;
+}
 
 
 

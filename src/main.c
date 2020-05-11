@@ -301,9 +301,9 @@ int main(void)
 
 
 
-	selfos_create_task(&taskA, taska, &taskC_Stk[TASKA_STK_SIZE - 1]);  
-	selfos_create_task(&taskB, taskb, &taskD_Stk[TASKA_STK_SIZE - 1]);  
-	selfos_create_task(&taskC, taskc, &taskE_Stk[TASKA_STK_SIZE - 1]);
+	selfos_create_task(&taskA, taska, &taskC_Stk[TASKA_STK_SIZE - 1],1);  
+	selfos_create_task(&taskB, taskb, &taskD_Stk[TASKA_STK_SIZE - 1],2);  
+	selfos_create_task(&taskC, taskc, &taskE_Stk[TASKA_STK_SIZE - 1],3);
 
 
 	/*创建队列*/

@@ -27,6 +27,8 @@ enum _State_Task
 struct selfos_task_struct {
 	uint32_t *pTopOfStack;   /* ’ª∂•µÿ÷∑ */
 	enum _State_Task state;
+	uint32_t priority:8;
+	uint32_t :24;
 	uint32_t wake_time;
 	uint32_t spd_source;
 	struct __link_list link;
@@ -68,7 +70,7 @@ void selfos_start(void);
 //void selfos_context_switch(void);
 //void selfos_pendsv_handler(void);
 
-void selfos_create_task(struct selfos_task_struct *tcb, selfos_task task, uint32_t *stk);
+uint32_t selfos_create_task(struct selfos_task_struct *tcb, selfos_task task, uint32_t *stk,uint32_t priority);
 void selfos_distroy_task(void);
 
 uint8_t OS_readyToSwitch(void);
