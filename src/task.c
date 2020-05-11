@@ -327,6 +327,100 @@ void get_next_TCB(void)
 	struct __link_list *pr_link=NULL,*pr_link_next=NULL;
 
 
+	
+	/*检查sleep的链表*/
+	
+		if(IfTaskNeedUnSlp()==1)
+		{
+			sInfo_slp_task.recent_wake=0xffffffff;
+	
+			pr_link=&shead_sleep_link;
+			pr_link_next=pr_link->next;
+			while((pr_link_next!=(&shead_sleep_link)))
+			{
+				
+				if((pr_link_next==NULL))	//链表尚未初始化
+				{
+					break;
+				}
+				
+				pr_link=pr_link_next;//获取当前需要处理的节点的位置
+				pr_link_next=pr_link->next;//保存下个节点的位置.避免当前节点删除后,找不到下个节点
+			
+				pr=container_of(pr_link,struct selfos_task_struct,link);
+				
+				if(pr->wake_time<=get_OS_sys_count())
+				{
+					pr->state=OS_RUN;
+					pr->wake_time=0xffffffff;
+					list_del(&(pr->link));
+	
+					//list_add_before(&(pr->link),&(gp_selfos_cur_task->link)); 
+					put_task_into_certain_state(pr, OS_RUN);
+	
+					continue;
+				}
+	
+				/*找出新的最近的唤醒时间*/
+				if(sInfo_slp_task.recent_wake>pr->wake_time)
+				{
+					sInfo_slp_task.recent_wake=pr->wake_time;	
+					sInfo_slp_task.recent_task=pr;
+				}
+	
+				
+			}
+	
+		}
+	
+	
+	/*检查suspend的链表*/
+		if(IfTaskNeedUnSpd()==1)
+		{
+			sInfo_spd_task.recent_wake=0xffffffff;
+	
+			pr_link=&shead_suspend_link;
+			pr_link_next=pr_link->next;
+			while((pr_link_next!=(&shead_suspend_link)))
+			{
+				
+				if((pr_link_next==NULL))	//链表尚未初始化
+				{
+					break;
+				}
+				
+				pr_link=pr_link_next;//获取当前需要处理的节点的位置
+				pr_link_next=pr_link->next;//保存下个节点的位置.避免当前节点删除后,找不到下个节点
+			
+				pr=container_of(pr_link,struct selfos_task_struct,link);
+				
+				if(pr->wake_time<=get_OS_sys_count())
+				{
+					pr->state=OS_RUN;
+					pr->wake_time=0xffffffff;
+					pr->spd_source=os_spd_timeout;
+					list_del(&(pr->link));
+	
+					//list_add_before(&(pr->link),&(gp_selfos_cur_task->link)); 
+					put_task_into_certain_state(pr, OS_RUN);
+	
+					continue;
+				}
+	
+				/*找出新的最近的唤醒时间*/
+				if(sInfo_spd_task.recent_wake>pr->wake_time)
+				{
+					sInfo_spd_task.recent_wake=pr->wake_time;	
+					sInfo_spd_task.recent_task=pr;
+				}
+	
+				
+			}
+	
+		}
+
+	/*在将sleep和suspend的任务处理完毕,将run链表进行重新排序后,在进行run的轮训*/
+	/*对run链表进行轮训,获取下一个需要运行的任务*/
 	do
 	{
 		if(gp_selfos_cur_task->state==OS_SLEEP)
@@ -350,112 +444,14 @@ void get_next_TCB(void)
 		}
 		else
 		{
-			gp_selfos_cur_task=container_of(gp_selfos_cur_task->link.next,struct selfos_task_struct,link);
+			//gp_selfos_cur_task=container_of(gp_selfos_cur_task->link.next,struct selfos_task_struct,link);
+			gp_selfos_cur_task=container_of(spr_head_task_link->link.next,struct selfos_task_struct,link);
 		}
 	}
 	while(gp_selfos_cur_task->state!=OS_RUN);
 
 
 
-
-/*检查sleep的链表*/
-
-	if(IfTaskNeedUnSlp()==1)
-	{
-		sInfo_slp_task.recent_wake=0xffffffff;
-
-		pr_link=&shead_sleep_link;
-		pr_link_next=pr_link->next;
-		while((pr_link_next!=(&shead_sleep_link)))
-		{
-			
-			if((pr_link_next==NULL))	//链表尚未初始化
-			{
-				break;
-			}
-			
-			pr_link=pr_link_next;//获取当前需要处理的节点的位置
-			pr_link_next=pr_link->next;//保存下个节点的位置.避免当前节点删除后,找不到下个节点
-		
-			pr=container_of(pr_link,struct selfos_task_struct,link);
-			
-			if(pr->wake_time<=get_OS_sys_count())
-			{
-				pr->state=OS_RUN;
-				pr->wake_time=0xffffffff;
-				list_del(&(pr->link));
-
-				//list_add_before(&(pr->link),&(gp_selfos_cur_task->link));	
-				put_task_into_certain_state(pr, OS_RUN);
-
-				continue;
-			}
-
-			/*找出新的最近的唤醒时间*/
-			if(sInfo_slp_task.recent_wake>pr->wake_time)
-			{
-				sInfo_slp_task.recent_wake=pr->wake_time;	
-				sInfo_slp_task.recent_task=pr;
-			}
-
-			
-		}
-
-	}
-
-
-/*检查suspend的链表*/
-	
-
-
-	if(IfTaskNeedUnSpd()==1)
-	{
-		sInfo_spd_task.recent_wake=0xffffffff;
-
-		pr_link=&shead_suspend_link;
-		pr_link_next=pr_link->next;
-		while((pr_link_next!=(&shead_suspend_link)))
-		{
-			
-			if((pr_link_next==NULL))	//链表尚未初始化
-			{
-				break;
-			}
-			
-			pr_link=pr_link_next;//获取当前需要处理的节点的位置
-			pr_link_next=pr_link->next;//保存下个节点的位置.避免当前节点删除后,找不到下个节点
-		
-			pr=container_of(pr_link,struct selfos_task_struct,link);
-			
-			if(pr->wake_time<=get_OS_sys_count())
-			{
-				pr->state=OS_RUN;
-				pr->wake_time=0xffffffff;
-				pr->spd_source=os_spd_timeout;
-				list_del(&(pr->link));
-
-				//list_add_before(&(pr->link),&(gp_selfos_cur_task->link));	
-				put_task_into_certain_state(pr, OS_RUN);
-
-				continue;
-			}
-
-			/*找出新的最近的唤醒时间*/
-			if(sInfo_spd_task.recent_wake>pr->wake_time)
-			{
-				sInfo_spd_task.recent_wake=pr->wake_time;	
-				sInfo_spd_task.recent_task=pr;
-			}
-
-			
-		}
-
-	}
-
-
-
-
-	
 
 
 
@@ -525,8 +521,9 @@ uint32_t put_task_into_certain_state(struct selfos_task_struct *pr_task,\
 		}
 		break;
 
-
-
+		defualt:
+			return os_false;
+			break;
 	}
 
 	return os_true;
