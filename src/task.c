@@ -41,7 +41,8 @@ static struct __link_list *spr_tail_slp_link=&shead_sleep_link;
 永远使用链表头的next的位置.
 由于默认创建idle的任务,因此链表头的next位置必定是有至少一个任务的.
 */
-strcut selfos_task_struct task_topest={.priority=0};
+struct selfos_task_struct task_topest={.priority=0};
+
 static struct __link_list *spr_head_task_link=&(task_topest.link);
 
 volatile struct  selfos_task_struct  *gp_selfos_cur_task=NULL;
@@ -197,7 +198,7 @@ void selfos_start (void)
 {
 
 	//添加idle任务
-	__selfos_create_task(&task_idle,taskidle,&task_idle_Stk[SIZE_STACK_TASK_IDLE - 1],255);
+	OS__selfos_create_task(&task_idle,taskidle,&task_idle_Stk[SIZE_STACK_TASK_IDLE - 1],255);
 
 #if 0		//systick
 	SCB_SHPR3=0xff<<16;
@@ -238,7 +239,7 @@ void selfos_distroy_task() {
 }
 
 
-uint32_t __selfos_create_task(struct selfos_task_struct * tcb, selfos_task task, uint32_t * stk ,uint32_t priority)
+uint32_t OS__selfos_create_task(struct selfos_task_struct * tcb, selfos_task task, uint32_t * stk ,uint32_t priority)
 {
 	uint32_t  *pstk;
     pstk = stk;
@@ -266,7 +267,7 @@ uint32_t __selfos_create_task(struct selfos_task_struct * tcb, selfos_task task,
 
     *(--pstk) = (uint32_t)0x01000000uL; // xPSR
     *(--pstk) = (uint32_t)task;         // Entry Point
-    *(--pstk) = (uint32_t)selfos_distroy_task;; // R14 (LR)
+    *(--pstk) = (uint32_t)selfos_distroy_task; // R14 (LR)
     *(--pstk) = (uint32_t)12121212; // R12
     *(--pstk) = (uint32_t)03030303; // R3
     *(--pstk) = (uint32_t)02020202; // R2
@@ -316,7 +317,7 @@ uint32_t selfos_create_task(struct selfos_task_struct * tcb, selfos_task task, u
 		return os_false;
 	}
 
-	__selfos_create_task(tcb,task,stk,priority);
+	OS__selfos_create_task(tcb,task,stk,priority);
 
 	return os_true;
 }
@@ -445,17 +446,12 @@ void get_next_TCB(void)
 		else
 		{
 			//gp_selfos_cur_task=container_of(gp_selfos_cur_task->link.next,struct selfos_task_struct,link);
-			gp_selfos_cur_task=container_of(spr_head_task_link->link.next,struct selfos_task_struct,link);
+			gp_selfos_cur_task=container_of(spr_head_task_link->next,struct selfos_task_struct,link);
 		}
 	}
 	while(gp_selfos_cur_task->state!=OS_RUN);
 
 
-
-
-
-
-#endif
 	
 }
 
@@ -497,21 +493,29 @@ uint32_t put_task_into_run_state(struct __link_list **pr_head,\
 	else
 	{
 		pr_link=pr_head;
+
+
 		pr_task_tmp=container_of(pr_link,struct selfos_task_struct,link);
 		pr_task_tmp_next=container_of(pr_link->next,struct selfos_task_struct,link);
-		
-		while((pr_link->next!=pr_head)||(pr_task->priority>=pr_task_tmp->priority)&&(pr_task->priority<pr_task_tmp_next->priority))
-		{
 
+		while(
+		(pr_link->next!=pr_head)||
+		((pr_task->priority>=pr_task_tmp->priority)&&
+		(pr_task->priority<pr_task_tmp_next->priority))
+		)
+		{
+			pr_link=pr_link->next;
+			pr_task_tmp=container_of(pr_link,struct selfos_task_struct,link);
+			pr_task_tmp_next=container_of(pr_link->next,struct selfos_task_struct,link);
 		}
+		
 		list_add_behind(&(pr_task->link), (*pr_head));
 	}
 
 	return os_true;
 }
 
-uint32_t put_task_into_certain_state(struct selfos_task_struct *pr_task,\
-									enum _State_Task flag)
+uint32_t put_task_into_certain_state(struct selfos_task_struct *pr_task,uint32_t flag)
 {
 	switch(flag)
 	{

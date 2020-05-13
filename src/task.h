@@ -69,7 +69,7 @@ extern volatile struct selfos_task_struct *gp_selfos_next_task;
 void selfos_start(void);
 //void selfos_context_switch(void);
 //void selfos_pendsv_handler(void);
-
+uint32_t OS__selfos_create_task(struct selfos_task_struct * tcb, selfos_task task, uint32_t * stk ,uint32_t priority);
 uint32_t selfos_create_task(struct selfos_task_struct *tcb, selfos_task task, uint32_t *stk,uint32_t priority);
 void selfos_distroy_task(void);
 
@@ -84,7 +84,7 @@ void OS_relSpdTask(uint32_t source);
 
 uint32_t put_task_into_other_state(struct __link_list **pr_tail,struct selfos_task_struct *pr_task);
 
-
+uint32_t put_task_into_certain_state(struct selfos_task_struct *pr_task,uint32_t flag);
 
 void TaskDelay(uint32_t dly);
 
