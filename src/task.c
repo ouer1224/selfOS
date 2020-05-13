@@ -50,6 +50,12 @@ volatile struct  selfos_task_struct  *gp_selfos_cur_task=NULL;
 
 
 
+/*用于优先级链表的结构,每个节点再去链接一组相同优先级的任务链表*/
+struct slefos_prio_struct sos_prio_list[MAX_NUM_PRIORITY];
+
+struct slefos_prio_struct *spr_os_prio_list=sos_prio_list;
+
+
 
 
 /*idle任务创建的环境*/

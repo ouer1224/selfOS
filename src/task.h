@@ -8,6 +8,9 @@
 #include "os_def.h"
 
 
+#define MAX_NUM_PRIORITY	12		/*最多同时存在N中优先级.*/
+
+
 #define os_spd_timeout		0xffffffff	
 #define os_spd_init			0
 
@@ -24,7 +27,8 @@ enum _State_Task
 };
 
 
-struct selfos_task_struct {
+struct selfos_task_struct 
+{
 	uint32_t *pTopOfStack;   /* 栈顶地址 */
 	enum _State_Task state;
 	uint32_t priority:8;
@@ -33,6 +37,16 @@ struct selfos_task_struct {
 	uint32_t spd_source;
 	struct __link_list link;
 };
+
+/*用于*/
+struct slefos_prio_struct
+{
+	uint32_t prio;	//优先级
+	struct selfos_task_struct *pr_task_list;	//链接相同优先级的任务的链表,指向其链表的第一个任务.
+	struct __link_list link;
+}
+
+
 
 
 struct selfos_slp_info
