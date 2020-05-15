@@ -325,14 +325,12 @@ uint32_t OS__selfos_create_task(struct selfos_task_struct * tcb, selfos_task tas
 	}
 
 	/*根据任务的优先级,选择合适的优先级的节点,放入其中*/
-	for(i=0;i<MAX_NUM_PRIORITY;i++)
+	/*节点0不放任何任务,仅作为链表头使用*/
+	for(i=1;i<MAX_NUM_PRIORITY;i++)
 	{
 		if(tcb->priority==sos_prio_list[i].prio)
 		{
-			sos_prio_list[i].pr_task_list
-
 			list_add_behind(sos_prio_list[i].pr_task_list->link,tcb->link);
-			
 		}
 		else if(sos_prio_list[i].prio==0)	//需要插入一个新的优先级节点
 		{
@@ -348,6 +346,9 @@ uint32_t OS__selfos_create_task(struct selfos_task_struct * tcb, selfos_task tas
 								__offsetof(prio,struct slefos_prio_struct));
 			
 		}
+
+		tcb->proi_node_link=&(sos_prio_list[i].link);
+		
 
 	}
 
@@ -373,7 +374,8 @@ void get_next_TCB(void)
 {
 	struct selfos_task_struct *pr=NULL;
 	struct __link_list *pr_link=NULL,*pr_link_next=NULL;
-
+	strcut slefos_prio_struct *pr_proity=NULL;
+	void *pr_tmp=NULL;
 
 	
 	/*检查sleep的链表*/
@@ -469,31 +471,69 @@ void get_next_TCB(void)
 
 	/*在将sleep和suspend的任务处理完毕,将run链表进行重新排序后,在进行run的轮训*/
 	/*对run链表进行轮训,获取下一个需要运行的任务*/
+
+		pr_proity=&(sos_prio_list[0].link.next);//获取第一个可以使用的优先级链表的节点
+
+
 	do
 	{
 		if(gp_selfos_cur_task->state==OS_SLEEP)
 		{
 			pr=gp_selfos_cur_task;
 			gp_selfos_cur_task=container_of(gp_selfos_cur_task->link.next,struct selfos_task_struct,link);
-			list_del(&(pr->link));	
-
+			if(pr->link.next==&(pr->link))	//已经是当前优先级的最后一个了
+			{
+				//从优先级链表删除当前优先级节点
+				
+				pr_tmp=container_of((gp_selfos_cur_task->proi_node_link),struct slefos_prio_struct,link);
+				
+				list_del(pr_tmp);
+				((struct slefos_prio_struct *)pr_tmp)->prio=NULL;
+			}
+			else
+			{
+				list_del(&(pr->link));	
+			}
+			
 			put_task_into_other_state(&spr_tail_slp_link,pr);
+			pr->proi_node_link=NULL;
 			
 		}
 		else if(gp_selfos_cur_task->state==OS_SUSPEND)
 		{
 			pr=gp_selfos_cur_task;
 			gp_selfos_cur_task=container_of(gp_selfos_cur_task->link.next,struct selfos_task_struct,link);
-			
-			list_del(&(pr->link));
+
+
+			if(pr->link.next==&(pr->link))	//已经是当前优先级的最后一个了
+			{
+				//从优先级链表删除当前优先级节点
+				
+				pr_tmp=container_of((gp_selfos_cur_task->proi_node_link),struct slefos_prio_struct,link);
+				
+				list_del(pr_tmp);
+				
+				((struct slefos_prio_struct *)pr_tmp)->prio=NULL;
+			}
+			else
+			{
+				list_del(&(pr->link));	
+			}
 
 			put_task_into_other_state(&spr_tail_spd_link,pr);
+			pr->proi_node_link=NULL;
 
 		}
 		else
 		{
 			//gp_selfos_cur_task=container_of(gp_selfos_cur_task->link.next,struct selfos_task_struct,link);
-			gp_selfos_cur_task=container_of(spr_head_task_link->next,struct selfos_task_struct,link);
+			//gp_selfos_cur_task=container_of(spr_head_task_link->next,struct selfos_task_struct,link);
+
+			gp_selfos_cur_task=pr_proity->pr_task_list;
+			gp_selfos_cur_task->proi_node_link=&(pr_proity->link);
+
+			pr_proity->pr_task_list=container_of(pr_proity->pr_task_list->link.next,struct selfos_task_struct,link);
+	
 		}
 	}
 	while(gp_selfos_cur_task->state!=OS_RUN);
@@ -522,45 +562,60 @@ uint32_t put_task_into_other_state(struct __link_list **pr_tail,struct selfos_ta
 	return os_true;
 }
 
-uint32_t put_task_into_run_state(struct __link_list **pr_head,\
-								struct selfos_task_struct *pr_task)
+uint32_t put_task_into_run_state(struct selfos_task_struct *tcb)
 {
-	struct __link_list *pr_link=NULL;
-	struct selfos_task_struct *pr_task_tmp=NULL;
-	struct selfos_task_struct *pr_task_tmp_next=NULL;
-
-	if((*pr_head)->next==NULL)	//初始化
+	uint32_t i=0;
+	/*根据任务的优先级,选择合适的优先级的节点,放入其中*/
+	for(i=1;i<MAX_NUM_PRIORITY;i++)
 	{
-		(*pr_head)->next=&(pr_task->link);
-		(*pr_head)->pre=&(pr_task->link);
-
-		pr_task->link.pre=(*pr_head);
-		pr_task->link.next=(*pr_head);
-	}
-	else
-	{
-		pr_link=pr_head;
-
-
-		pr_task_tmp=container_of(pr_link,struct selfos_task_struct,link);
-		pr_task_tmp_next=container_of(pr_link->next,struct selfos_task_struct,link);
-
-		while(
-		(pr_link->next!=pr_head)||
-		((pr_task->priority>=pr_task_tmp->priority)&&
-		(pr_task->priority<pr_task_tmp_next->priority))
-		)
+		if(tcb->priority==sos_prio_list[i].prio)
 		{
-			pr_link=pr_link->next;
-			pr_task_tmp=container_of(pr_link,struct selfos_task_struct,link);
-			pr_task_tmp_next=container_of(pr_link->next,struct selfos_task_struct,link);
+			list_add_behind(sos_prio_list[i].pr_task_list->link,tcb->link);
 		}
+		else if(sos_prio_list[i].prio==0)	//需要插入一个新的优先级节点
+		{
+			tcb->link.next=tcb->link;	//放入一个空的优先级链表中时,要对链接的任务的链表进行一次初始化.
+			tcb->link.pre=tcb->link;
+			
+			sos_prio_list[i].pr_task_list=tcb;
+
+			//将优先级链表的节点,加入到优先级的链表中.按照从小到大的顺序.
+
+			add_list_base_para(&sos_prio_list[0].link,&(sos_prio_list[i].link),\
+								__offsetof(link, struct slefos_prio_struct),\
+								__offsetof(prio,struct slefos_prio_struct));
+			
+		}
+
+		tcb->proi_node_link=&(sos_prio_list[i].link);
 		
-		list_add_behind(&(pr_task->link), (*pr_head));
+
+	}
+
+
+	return os_true;
+}
+
+
+
+uint32_t put_task_into_certain_state(struct selfos_task_struct *pr_task,uint32_t flag)
+{
+	switch(flag)
+	{
+		case OS_RUN:
+		{
+			put_task_into_run_state(&spr_head_task_link,pr_task);
+		}
+		break;
+
+		defualt:
+			return os_false;
+			break;
 	}
 
 	return os_true;
 }
+
 
 /*
 结构体的offset
@@ -626,25 +681,6 @@ uint32_t add_list_base_para(struct __link_list *pr_head,struct __link_list *pr_t
 
 
 	return 1;
-}
-
-
-uint32_t put_task_into_certain_state(struct selfos_task_struct *pr_task,uint32_t flag)
-{
-	switch(flag)
-	{
-		case OS_RUN:
-		{
-			put_task_into_run_state(&spr_head_task_link,pr_task);
-		}
-		break;
-
-		defualt:
-			return os_false;
-			break;
-	}
-
-	return os_true;
 }
 
 

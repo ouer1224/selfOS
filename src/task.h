@@ -35,6 +35,7 @@ struct selfos_task_struct
 	uint32_t :24;
 	uint32_t wake_time;
 	uint32_t spd_source;
+	struct __link_list *proi_node_link;
 	struct __link_list link;
 };
 
@@ -99,6 +100,11 @@ void OS_relSpdTask(uint32_t source);
 uint32_t put_task_into_other_state(struct __link_list **pr_tail,struct selfos_task_struct *pr_task);
 
 uint32_t put_task_into_certain_state(struct selfos_task_struct *pr_task,uint32_t flag);
+
+uint32_t add_list_base_para(struct __link_list *pr_head,\
+							struct __link_list *pr_targe_link,uint32_t offset_strcut,\
+							uint32_t offset_proirity,uint8_t SmallToBig);
+
 
 void TaskDelay(uint32_t dly);
 
