@@ -248,6 +248,7 @@ void selfos_distroy_task() {
 uint32_t OS__selfos_create_task(struct selfos_task_struct * tcb, selfos_task task, uint32_t * stk ,uint32_t priority)
 {
 	uint32_t  *pstk;
+	uint32_t i=0;
     pstk = stk;
     pstk = (uint32_t *)((uint32_t)(pstk) & 0xFFFFFFF8uL);
 
@@ -294,6 +295,7 @@ uint32_t OS__selfos_create_task(struct selfos_task_struct * tcb, selfos_task tas
 	tcb->wake_time=0;
 	tcb->priority=priority;
 
+#if 0
 	/*将任务添加到链表中*/
 	if(gp_selfos_cur_task==NULL)
 	{
@@ -310,6 +312,45 @@ uint32_t OS__selfos_create_task(struct selfos_task_struct * tcb, selfos_task tas
 	{
 		put_task_into_certain_state(tcb, OS_RUN);	//根据优先级放入链表中.
 	}
+#endif
+
+
+	/*初始化优先级的链表*/
+	if(sos_prio_list[0].pr_task_list==NULL)
+	{
+		sos_prio_list[0].prio=0;
+		sos_prio_list[0].link.next=sos_prio_list[0].link;
+		sos_prio_list[0].link.pre=sos_prio_list[0].link;
+	}
+
+	/*根据任务的优先级,选择合适的优先级的节点,放入其中*/
+	for(i=0;i<MAX_NUM_PRIORITY;i++)
+	{
+		if(tcb->priority==sos_prio_list[i].prio)
+		{
+			sos_prio_list[i].pr_task_list
+
+			list_add_behind(sos_prio_list[i].pr_task_list->link,tcb->link);
+			
+		}
+		else if(sos_prio_list[i].prio==0)
+		{
+			tcb->link.next=tcb->link;	//放入一个空的优先级链表中时,要对链接的任务的链表进行一次初始化.
+			tcb->link.pre=tcb->link;
+			
+			sos_prio_list[i].pr_task_list=tcb;
+		}
+
+	}
+
+	
+
+
+
+	
+
+
+	
 
 	return os_true;
 
@@ -520,6 +561,73 @@ uint32_t put_task_into_run_state(struct __link_list **pr_head,\
 
 	return os_true;
 }
+
+/*
+结构体的offset
+优先级的offset
+*/
+uint32_t add_list_base_para(struct __link_list **pr_head,struct __link_list *pr_targe_link,uint32_t offset_strcut,uint32_t offset_proirity,uint8_t SmallToBig)
+{
+	int8_t proi_para=0;//
+	struct __link_list *pr_link=NULL;
+	void *pr_struct_tmp=NULL;
+	void *pr_struct_tmp_next=NULL;
+	void *pr_targe_struct=NULL;
+
+	if(SmallToBig==0)
+	{
+		proi_para=1;
+	}
+	else
+	{
+		proi_para=-1;	
+	}
+
+	pr_targe_struct=__container_of(pr_targe_link,offset_strcut));
+
+
+	
+	if((*pr_head)->next==NULL)	//初始化
+	{
+		(*pr_head)->next=&(pr_task->link);
+		(*pr_head)->pre=&(pr_task->link);
+
+		pr_task->link.pre=(*pr_head);
+		pr_task->link.next=(*pr_head);
+	}
+	else
+	{
+		pr_link=pr_head;
+
+		pr_struct_tmp=__container_of(pr_link,offset_strcut));
+		pr_struct_tmp_next=__container_of(pr_link->next,offset_strcut);
+
+#if 0
+		((uint32_t *)(pr_struct_tmp+offset_proirity))
+		((uint32_t *)(pr_struct_tmp_next+offset_proirity))
+		((uint32_t *)(pr_targe_struct+offset_proirity))
+#endif
+
+		while(
+		(pr_link->next!=pr_head)||
+		((((uint32_t *)(pr_targe_struct+offset_proirity))>=((uint32_t *)(pr_struct_tmp+offset_proirity)))&&
+		(((uint32_t *)(pr_targe_struct+offset_proirity))<((uint32_t *)(pr_struct_tmp_next+offset_proirity))))
+		)
+		{
+			pr_link=pr_link->next;
+			pr_struct_tmp=__container_of(pr_link,offset_strcut));
+			pr_struct_tmp_next=__container_of(pr_link->next,offset_strcut);
+
+		}
+		
+		list_add_behind(pr_targe_link, (*pr_head));
+	}
+
+
+
+	return 1;
+}
+
 
 uint32_t put_task_into_certain_state(struct selfos_task_struct *pr_task,uint32_t flag)
 {
