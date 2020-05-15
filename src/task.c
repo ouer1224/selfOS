@@ -248,6 +248,7 @@ void selfos_distroy_task() {
 uint32_t OS__selfos_create_task(struct selfos_task_struct * tcb, selfos_task task, uint32_t * stk ,uint32_t priority)
 {
 	uint32_t  *pstk;
+	void *pr=NULL;
 	uint32_t i=0;
     pstk = stk;
     pstk = (uint32_t *)((uint32_t)(pstk) & 0xFFFFFFF8uL);
@@ -333,24 +334,23 @@ uint32_t OS__selfos_create_task(struct selfos_task_struct * tcb, selfos_task tas
 			list_add_behind(sos_prio_list[i].pr_task_list->link,tcb->link);
 			
 		}
-		else if(sos_prio_list[i].prio==0)
+		else if(sos_prio_list[i].prio==0)	//需要插入一个新的优先级节点
 		{
 			tcb->link.next=tcb->link;	//放入一个空的优先级链表中时,要对链接的任务的链表进行一次初始化.
 			tcb->link.pre=tcb->link;
 			
 			sos_prio_list[i].pr_task_list=tcb;
+
+			//将优先级链表的节点,加入到优先级的链表中.按照从小到大的顺序.
+
+			add_list_base_para(&sos_prio_list[0].link,&(sos_prio_list[i].link),\
+								__offsetof(link, struct slefos_prio_struct),\
+								__offsetof(prio,struct slefos_prio_struct));
+			
 		}
 
 	}
 
-	
-
-
-
-	
-
-
-	
 
 	return os_true;
 
@@ -566,7 +566,7 @@ uint32_t put_task_into_run_state(struct __link_list **pr_head,\
 结构体的offset
 优先级的offset
 */
-uint32_t add_list_base_para(struct __link_list **pr_head,struct __link_list *pr_targe_link,uint32_t offset_strcut,uint32_t offset_proirity,uint8_t SmallToBig)
+uint32_t add_list_base_para(struct __link_list *pr_head,struct __link_list *pr_targe_link,uint32_t offset_strcut,uint32_t offset_proirity,uint8_t SmallToBig)
 {
 	int8_t proi_para=0;//
 	struct __link_list *pr_link=NULL;
@@ -587,13 +587,13 @@ uint32_t add_list_base_para(struct __link_list **pr_head,struct __link_list *pr_
 
 
 	
-	if((*pr_head)->next==NULL)	//初始化
+	if((pr_head)->next==NULL)	//初始化
 	{
-		(*pr_head)->next=&(pr_task->link);
-		(*pr_head)->pre=&(pr_task->link);
+		(pr_head)->next=&(pr_task->link);
+		(pr_head)->pre=&(pr_task->link);
 
-		pr_task->link.pre=(*pr_head);
-		pr_task->link.next=(*pr_head);
+		pr_task->link.pre=(pr_head);
+		pr_task->link.next=(pr_head);
 	}
 	else
 	{
@@ -620,7 +620,7 @@ uint32_t add_list_base_para(struct __link_list **pr_head,struct __link_list *pr_
 
 		}
 		
-		list_add_behind(pr_targe_link, (*pr_head));
+		list_add_behind(pr_targe_link, (pr_head));
 	}
 
 
