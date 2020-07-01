@@ -317,7 +317,7 @@ uint32_t OS__selfos_create_task(struct selfos_task_struct * tcb, selfos_task tas
 
 
 	/*初始化优先级的链表*/
-	if(sos_prio_list[0].pr_task_list==NULL)
+	if(sos_prio_list[0].link.next==NULL)
 	{
 		sos_prio_list[0].prio=0;
 		sos_prio_list[0].link.next=&(sos_prio_list[0].link);
@@ -331,29 +331,41 @@ uint32_t OS__selfos_create_task(struct selfos_task_struct * tcb, selfos_task tas
 		if(tcb->priority==sos_prio_list[i].prio)
 		{
 			list_add_behind(&(sos_prio_list[i].pr_task_list->link),&(tcb->link));
+			tcb->proi_node_link=&(sos_prio_list[i].link);
+			i=0;
+			break;
 		}
 		else if(sos_prio_list[i].prio==0)	//需要插入一个新的优先级节点
 		{
 			tcb->link.next=&(tcb->link);	//放入一个空的优先级链表中时,要对链接的任务的链表进行一次初始化.
 			tcb->link.pre=&(tcb->link);
-			
+			sos_prio_list[i].prio=tcb->priority;
 			sos_prio_list[i].pr_task_list=tcb;
 
 			//将优先级链表的节点,加入到优先级的链表中.按照从小到大的顺序.
-
+			//优先级数值越小,优先级越高
 			add_list_base_para(&(sos_prio_list[0].link),&(sos_prio_list[i].link),\
 								__offsetof(struct slefos_prio_struct,link),\
 								__offsetof(struct slefos_prio_struct,prio));
+			tcb->proi_node_link=&(sos_prio_list[i].link);
+			i=0;
+			break;
 			
 		}
 
-		tcb->proi_node_link=&(sos_prio_list[i].link);
-		
 
 	}
 
+	if(i==0)
+	{
+		return os_true;
+	}
+	else
+	{
+		return os_false;
+	}
 
-	return os_true;
+
 
 }
 
@@ -472,8 +484,12 @@ void get_next_TCB(void)
 	/*在将sleep和suspend的任务处理完毕,将run链表进行重新排序后,在进行run的轮训*/
 	/*对run链表进行轮训,获取下一个需要运行的任务*/
 
-		pr_proity=&(sos_prio_list[0].link.next);//获取第一个可以使用的优先级链表的节点
+		//pr_proity=&(sos_prio_list[0].link.next);//获取第一个可以使用的优先级链表的节点
+		//原代码应该是错了
 
+		//pr_proity=container_of(&(sos_prio_list[0].link), struct slefos_prio_struct, link);
+
+		pr_proity=container_of(&(sos_prio_list[0].link.next), struct slefos_prio_struct, link);
 
 	do
 	{
