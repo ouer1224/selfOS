@@ -45,7 +45,7 @@ struct slefos_prio_struct
 	uint32_t prio;	//优先级
 	struct selfos_task_struct *pr_task_list;	//链接相同优先级的任务的链表,指向其链表的第一个任务.
 	struct __link_list link;
-}
+};
 
 
 
@@ -101,9 +101,11 @@ uint32_t put_task_into_other_state(struct __link_list **pr_tail,struct selfos_ta
 
 uint32_t put_task_into_certain_state(struct selfos_task_struct *pr_task,uint32_t flag);
 
-uint32_t add_list_base_para(struct __link_list *pr_head,\
+uint32_t __add_list_base_para(struct __link_list *pr_head,\
 							struct __link_list *pr_targe_link,uint32_t offset_strcut,\
 							uint32_t offset_proirity,uint8_t SmallToBig);
+
+#define add_list_base_para(pr_head,pr_targe_link,offset_strcut, offset_proirity)		__add_list_base_para(pr_head,pr_targe_link,offset_strcut, offset_proirity,0)
 
 
 void TaskDelay(uint32_t dly);

@@ -320,8 +320,8 @@ uint32_t OS__selfos_create_task(struct selfos_task_struct * tcb, selfos_task tas
 	if(sos_prio_list[0].pr_task_list==NULL)
 	{
 		sos_prio_list[0].prio=0;
-		sos_prio_list[0].link.next=sos_prio_list[0].link;
-		sos_prio_list[0].link.pre=sos_prio_list[0].link;
+		sos_prio_list[0].link.next=&(sos_prio_list[0].link);
+		sos_prio_list[0].link.pre=&(sos_prio_list[0].link);
 	}
 
 	/*根据任务的优先级,选择合适的优先级的节点,放入其中*/
@@ -330,20 +330,20 @@ uint32_t OS__selfos_create_task(struct selfos_task_struct * tcb, selfos_task tas
 	{
 		if(tcb->priority==sos_prio_list[i].prio)
 		{
-			list_add_behind(sos_prio_list[i].pr_task_list->link,tcb->link);
+			list_add_behind(&(sos_prio_list[i].pr_task_list->link),&(tcb->link));
 		}
 		else if(sos_prio_list[i].prio==0)	//需要插入一个新的优先级节点
 		{
-			tcb->link.next=tcb->link;	//放入一个空的优先级链表中时,要对链接的任务的链表进行一次初始化.
-			tcb->link.pre=tcb->link;
+			tcb->link.next=&(tcb->link);	//放入一个空的优先级链表中时,要对链接的任务的链表进行一次初始化.
+			tcb->link.pre=&(tcb->link);
 			
 			sos_prio_list[i].pr_task_list=tcb;
 
 			//将优先级链表的节点,加入到优先级的链表中.按照从小到大的顺序.
 
-			add_list_base_para(&sos_prio_list[0].link,&(sos_prio_list[i].link),\
-								__offsetof(link, struct slefos_prio_struct),\
-								__offsetof(prio,struct slefos_prio_struct));
+			add_list_base_para(&(sos_prio_list[0].link),&(sos_prio_list[i].link),\
+								__offsetof(struct slefos_prio_struct,link),\
+								__offsetof(struct slefos_prio_struct,prio));
 			
 		}
 
@@ -374,7 +374,7 @@ void get_next_TCB(void)
 {
 	struct selfos_task_struct *pr=NULL;
 	struct __link_list *pr_link=NULL,*pr_link_next=NULL;
-	strcut slefos_prio_struct *pr_proity=NULL;
+	struct slefos_prio_struct *pr_proity=NULL;
 	void *pr_tmp=NULL;
 
 	
@@ -570,20 +570,20 @@ uint32_t put_task_into_run_state(struct selfos_task_struct *tcb)
 	{
 		if(tcb->priority==sos_prio_list[i].prio)
 		{
-			list_add_behind(sos_prio_list[i].pr_task_list->link,tcb->link);
+			list_add_behind(&(sos_prio_list[i].pr_task_list->link),&(tcb->link));
 		}
 		else if(sos_prio_list[i].prio==0)	//需要插入一个新的优先级节点
 		{
-			tcb->link.next=tcb->link;	//放入一个空的优先级链表中时,要对链接的任务的链表进行一次初始化.
-			tcb->link.pre=tcb->link;
+			tcb->link.next=&(tcb->link);	//放入一个空的优先级链表中时,要对链接的任务的链表进行一次初始化.
+			tcb->link.pre=&(tcb->link);
 			
 			sos_prio_list[i].pr_task_list=tcb;
 
 			//将优先级链表的节点,加入到优先级的链表中.按照从小到大的顺序.
 
 			add_list_base_para(&sos_prio_list[0].link,&(sos_prio_list[i].link),\
-								__offsetof(link, struct slefos_prio_struct),\
-								__offsetof(prio,struct slefos_prio_struct));
+								__offsetof(struct slefos_prio_struct,link),\
+								__offsetof(struct slefos_prio_struct,prio));
 			
 		}
 
@@ -604,7 +604,7 @@ uint32_t put_task_into_certain_state(struct selfos_task_struct *pr_task,uint32_t
 	{
 		case OS_RUN:
 		{
-			put_task_into_run_state(&spr_head_task_link,pr_task);
+			put_task_into_run_state(pr_task);
 		}
 		break;
 
@@ -621,7 +621,7 @@ uint32_t put_task_into_certain_state(struct selfos_task_struct *pr_task,uint32_t
 结构体的offset
 优先级的offset
 */
-uint32_t add_list_base_para(struct __link_list *pr_head,struct __link_list *pr_targe_link,uint32_t offset_strcut,uint32_t offset_proirity,uint8_t SmallToBig)
+uint32_t __add_list_base_para(struct __link_list *pr_head,struct __link_list *pr_targe_link,uint32_t offset_strcut,uint32_t offset_proirity,uint8_t SmallToBig)
 {
 	int8_t proi_para=0;//
 	struct __link_list *pr_link=NULL;
@@ -638,23 +638,34 @@ uint32_t add_list_base_para(struct __link_list *pr_head,struct __link_list *pr_t
 		proi_para=-1;	
 	}
 
-	pr_targe_struct=__container_of(pr_targe_link,offset_strcut));
+	pr_targe_struct=__container_of(pr_targe_link,offset_strcut);
 
 
 	
 	if((pr_head)->next==NULL)	//初始化
 	{
-		(pr_head)->next=&(pr_task->link);
-		(pr_head)->pre=&(pr_task->link);
+	
+#if 0
+		(pr_head)->next=&(pr_targe_struct->link);
+		(pr_head)->pre=&(pr_targe_struct->link);
 
-		pr_task->link.pre=(pr_head);
-		pr_task->link.next=(pr_head);
+		pr_targe_struct->link.pre=(pr_head);
+		pr_targe_struct->link.next=(pr_head);
+#else
+
+		(pr_head)->next=pr_targe_link;
+		(pr_head)->pre=pr_targe_link;
+
+		pr_targe_link->pre=(pr_head);
+		pr_targe_link->next=(pr_head);
+#endif
+		
 	}
 	else
 	{
 		pr_link=pr_head;
 
-		pr_struct_tmp=__container_of(pr_link,offset_strcut));
+		pr_struct_tmp=__container_of(pr_link,offset_strcut);
 		pr_struct_tmp_next=__container_of(pr_link->next,offset_strcut);
 
 #if 0
@@ -670,7 +681,7 @@ uint32_t add_list_base_para(struct __link_list *pr_head,struct __link_list *pr_t
 		)
 		{
 			pr_link=pr_link->next;
-			pr_struct_tmp=__container_of(pr_link,offset_strcut));
+			pr_struct_tmp=__container_of(pr_link,offset_strcut);
 			pr_struct_tmp_next=__container_of(pr_link->next,offset_strcut);
 
 		}
