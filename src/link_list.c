@@ -70,6 +70,9 @@ int list_del(link_list *current)
 	current->pre->next=current->next;
 	current->next->pre=current->pre;
 
+	current->pre=NULL;
+	current->next=NULL;
+
 	return 0;
 }
 #if 1

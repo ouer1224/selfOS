@@ -222,7 +222,7 @@ void taska(void)
 			*((uint8_t *)buf_a+i)=i+count;
 		}
 		count++;
-		
+#if 0
 		pr_send=get_mem_from_pool(&smem_test,LEN_TASKA_MEM);
 		if(pr_send!=NULL)
 		{
@@ -233,7 +233,7 @@ void taska(void)
 				;
 			}
 		}
-
+#endif
 
 	}
 
@@ -247,7 +247,7 @@ void taskb(void)
 	TaskDelay(1000);	
     while (1) 
 	{
-
+#if 0
 		rc=get_dat_from_queue(&queue_taskb, &pr_rcv,3000, 0);
 		if(rc==os_true)
 		{
@@ -258,6 +258,11 @@ void taskb(void)
 
 			sem_release(&sem_prevent_taskc);
 		}	
+#else
+
+	TaskDelay(10000);
+
+#endif
 
 
     }
@@ -271,13 +276,17 @@ void taskc(void)
     while (1) 
 	{
 		TaskDelay(200);
-		
+#if 0
 		rc=sem_acquire(&sem_prevent_taskc,4000);
 		if(rc==os_true)
 		{
 			task_blink_blue();
 		}
+#else
+		task_blink_blue();
 
+
+#endif
 
 		
     }
@@ -301,8 +310,8 @@ int main(void)
 
 
 
-	selfos_create_task(&taskA, taska, &taskC_Stk[TASKA_STK_SIZE - 1],1);  
-	selfos_create_task(&taskB, taskb, &taskD_Stk[TASKA_STK_SIZE - 1],2);  
+	selfos_create_task(&taskA, taska, &taskC_Stk[TASKA_STK_SIZE - 1],4);  
+	selfos_create_task(&taskB, taskb, &taskD_Stk[TASKA_STK_SIZE - 1],1);  
 	selfos_create_task(&taskC, taskc, &taskE_Stk[TASKA_STK_SIZE - 1],3);
 
 

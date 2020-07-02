@@ -482,29 +482,27 @@ void get_next_TCB(void)
 		}
 
 	/*在将sleep和suspend的任务处理完毕,将run链表进行重新排序后,在进行run的轮训*/
-	/*对run链表进行轮训,获取下一个需要运行的任务*/
-
-		//pr_proity=&(sos_prio_list[0].link.next);//获取第一个可以使用的优先级链表的节点
-		//原代码应该是错了
-
-		//pr_proity=container_of(&(sos_prio_list[0].link), struct slefos_prio_struct, link);
-
-		pr_proity=container_of(&(sos_prio_list[0].link.next), struct slefos_prio_struct, link);
 
 	do
 	{
+		if(gp_selfos_cur_task==NULL)
+		{
+			break;
+		}
+
 		if(gp_selfos_cur_task->state==OS_SLEEP)
 		{
 			pr=gp_selfos_cur_task;
-			gp_selfos_cur_task=container_of(gp_selfos_cur_task->link.next,struct selfos_task_struct,link);
+			//gp_selfos_cur_task=container_of(gp_selfos_cur_task->link.next,struct selfos_task_struct,link);
 			if(pr->link.next==&(pr->link))	//已经是当前优先级的最后一个了
 			{
 				//从优先级链表删除当前优先级节点
 				
-				pr_tmp=container_of((gp_selfos_cur_task->proi_node_link),struct slefos_prio_struct,link);
+				pr_tmp=container_of((pr->proi_node_link),struct slefos_prio_struct,link);
 				
-				list_del(pr_tmp);
+				list_del(&(((struct slefos_prio_struct *)pr_tmp)->link));
 				((struct slefos_prio_struct *)pr_tmp)->prio=NULL;
+				((struct slefos_prio_struct *)pr_tmp)->pr_task_list=NULL;
 			}
 			else
 			{
@@ -514,6 +512,8 @@ void get_next_TCB(void)
 			put_task_into_other_state(&spr_tail_slp_link,pr);
 			pr->proi_node_link=NULL;
 			
+			gp_selfos_cur_task=NULL;
+
 		}
 		else if(gp_selfos_cur_task->state==OS_SUSPEND)
 		{
@@ -540,21 +540,40 @@ void get_next_TCB(void)
 			pr->proi_node_link=NULL;
 
 		}
-		else
+		else if(gp_selfos_cur_task->state==OS_RUN)
 		{
 			//gp_selfos_cur_task=container_of(gp_selfos_cur_task->link.next,struct selfos_task_struct,link);
 			//gp_selfos_cur_task=container_of(spr_head_task_link->next,struct selfos_task_struct,link);
 
+#if 0
 			gp_selfos_cur_task=pr_proity->pr_task_list;
 			gp_selfos_cur_task->proi_node_link=&(pr_proity->link);
 
 			pr_proity->pr_task_list=container_of(pr_proity->pr_task_list->link.next,struct selfos_task_struct,link);
-	
+
+#endif
+
+			pr_link=gp_selfos_cur_task->proi_node_link;
+			pr_tmp=container_of((pr_link),struct slefos_prio_struct,link);
+
+			((struct slefos_prio_struct *)pr_tmp)->pr_task_list=container_of((gp_selfos_cur_task->link.next),struct selfos_task_struct,link);
+
+		}
+		else
+		{
+				break;
 		}
 	}
 	while(gp_selfos_cur_task->state!=OS_RUN);
 
+/*从sos_prio_list链表中查找已经就绪的最高级的任务*/
+/*也就是sos_prio_list0指向的下一个结构体所指向的任务链表组*/
+	pr_proity=container_of((sos_prio_list[0].link.next), struct slefos_prio_struct, link);
+	
+	gp_selfos_cur_task=pr_proity->pr_task_list;
 
+/*由于idle任务必定会存在,且一直处于run态,因此必定存在一个sos_prio_list类型的结构体,其结构体指向idle任务
+不会出现空的情况*/
 	
 }
 
@@ -587,6 +606,8 @@ uint32_t put_task_into_run_state(struct selfos_task_struct *tcb)
 		if(tcb->priority==sos_prio_list[i].prio)
 		{
 			list_add_behind(&(sos_prio_list[i].pr_task_list->link),&(tcb->link));
+			tcb->proi_node_link=&(sos_prio_list[i].link);
+			break;
 		}
 		else if(sos_prio_list[i].prio==0)	//需要插入一个新的优先级节点
 		{
@@ -594,17 +615,18 @@ uint32_t put_task_into_run_state(struct selfos_task_struct *tcb)
 			tcb->link.pre=&(tcb->link);
 			
 			sos_prio_list[i].pr_task_list=tcb;
-
+			sos_prio_list[i].prio=tcb->priority;
 			//将优先级链表的节点,加入到优先级的链表中.按照从小到大的顺序.
 
 			add_list_base_para(&sos_prio_list[0].link,&(sos_prio_list[i].link),\
 								__offsetof(struct slefos_prio_struct,link),\
 								__offsetof(struct slefos_prio_struct,prio));
 			
-		}
+			tcb->proi_node_link=&(sos_prio_list[i].link);
 
-		tcb->proi_node_link=&(sos_prio_list[i].link);
-		
+			break;
+
+		}
 
 	}
 
@@ -633,81 +655,118 @@ uint32_t put_task_into_certain_state(struct selfos_task_struct *pr_task,uint32_t
 }
 
 
-/*
-结构体的offset
-优先级的offset
-*/
-uint32_t __add_list_base_para(struct __link_list *pr_head,struct __link_list *pr_targe_link,uint32_t offset_strcut,uint32_t offset_proirity,uint8_t SmallToBig)
+
+#define macro_prIsNull		0xff
+
+#define CheckPrIsVail(pr)		do{if(pr==NULL){return macro_prIsNull;}}while(0)
+
+uint8_t listToSlef(struct __link_list * pr_list)
 {
-	int8_t proi_para=0;//
-	struct __link_list *pr_link=NULL;
-	void *pr_struct_tmp=NULL;
-	void *pr_struct_tmp_next=NULL;
-	void *pr_targe_struct=NULL;
-
-	if(SmallToBig==0)
-	{
-		proi_para=1;
-	}
-	else
-	{
-		proi_para=-1;	
-	}
-
-	pr_targe_struct=__container_of(pr_targe_link,offset_strcut);
-
-
+	CheckPrIsVail(pr_list);
 	
-	if((pr_head)->next==NULL)	//初始化
-	{
-	
-#if 0
-		(pr_head)->next=&(pr_targe_struct->link);
-		(pr_head)->pre=&(pr_targe_struct->link);
-
-		pr_targe_struct->link.pre=(pr_head);
-		pr_targe_struct->link.next=(pr_head);
-#else
-
-		(pr_head)->next=pr_targe_link;
-		(pr_head)->pre=pr_targe_link;
-
-		pr_targe_link->pre=(pr_head);
-		pr_targe_link->next=(pr_head);
-#endif
+	pr_list->next=pr_list;
+	pr_list->pre=pr_list;
 		
+	return 1;
+}
+
+uint8_t listIsNull(struct __link_list * head_list)
+{
+	CheckPrIsVail(head_list);
+	if((head_list->pre==NULL)&&(head_list->next==NULL))	
+	{
+		return 1;	
+	}	
+	return 0;
+}
+
+uint8_t listReachEnd(struct __link_list * head_list,struct __link_list * cur_list)
+{
+	if(head_list->next==head_list)
+	{
+		return 0xff;	/*表示只有1个元素*/
+	}	
+	
+	if(cur_list->next==head_list)
+	{
+		return 1;		/*表示到了链表的end*/ 
+	}	
+	
+	return 0;
+}
+
+uint32_t ParaValOfStrcut(void * pr_struct,uint32_t para_offset) 
+{
+	return *((uint32_t *)(pr_struct+para_offset));
+}
+
+
+
+
+void __add_list_base_para(struct __link_list * head_list,
+						struct __link_list * inser_list,
+						uint32_t list_offset,
+						uint32_t para_offset,uint8_t order)
+{
+	void * inser_node=NULL;
+	void * head_node=NULL;
+	void * cur_node=NULL;
+	uint32_t para_node=0;
+	uint32_t para_new_node=0;
+	
+	struct __link_list * pr_list=NULL;
+	struct __link_list * pr_list_next=NULL;
+	
+	inser_node= (void *)inser_list - list_offset ;
+	head_node= (void *)head_list - list_offset;
+	
+	para_node = *((uint32_t *)(head_node+para_offset));
+	para_new_node = *((uint32_t *)(inser_node+para_offset));
+	
+	
+	if(listIsNull(head_list)==1)		
+	{
+		listToSlef(head_list);
+	}
+	if(listReachEnd(head_list,head_list)==0xff)	/*只有一个数据的时候,直接插入*/
+	{
+		list_add_behind(inser_list,head_list);
 	}
 	else
 	{
-		pr_link=pr_head;
-
-		pr_struct_tmp=__container_of(pr_link,offset_strcut);
-		pr_struct_tmp_next=__container_of(pr_link->next,offset_strcut);
-
-#if 0
-		((uint32_t *)(pr_struct_tmp+offset_proirity))
-		((uint32_t *)(pr_struct_tmp_next+offset_proirity))
-		((uint32_t *)(pr_targe_struct+offset_proirity))
-#endif
-
-		while(
-		(pr_link->next!=pr_head)||
-		((((uint32_t *)(pr_targe_struct+offset_proirity))>=((uint32_t *)(pr_struct_tmp+offset_proirity)))&&
-		(((uint32_t *)(pr_targe_struct+offset_proirity))<((uint32_t *)(pr_struct_tmp_next+offset_proirity))))
-		)
+		pr_list=head_list;
+		pr_list_next=pr_list->next;
+		
+		do
 		{
-			pr_link=pr_link->next;
-			pr_struct_tmp=__container_of(pr_link,offset_strcut);
-			pr_struct_tmp_next=__container_of(pr_link->next,offset_strcut);
+			cur_node = (void *)pr_list - list_offset ;	
+			para_node = *((uint32_t *)(cur_node+para_offset));
+			para_new_node = *((uint32_t *)(inser_node+para_offset));
+			
+			if(para_new_node > para_node)
+			{
+				
+				if(listReachEnd(head_list,pr_list)==1)/*到达链表的尾端,都没有找到比inser_node的参数大的,将inser放入到尾端*/
+				{
+					list_add_before(inser_list,head_list); 
+					break;
+				}				
+				
+				/*loop*/
+				pr_list=pr_list_next;
+				pr_list_next=pr_list->next;
+
+			}
+			else
+			{
+				/*inser before cur*/
+				list_add_before(inser_list,pr_list);
+				break;
+			}
 
 		}
-		
-		list_add_behind(pr_targe_link, (pr_head));
-	}
-
-
-
-	return 1;
+		while(1);	
+	}	
 }
 
 

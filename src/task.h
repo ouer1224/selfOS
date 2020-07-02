@@ -101,11 +101,13 @@ uint32_t put_task_into_other_state(struct __link_list **pr_tail,struct selfos_ta
 
 uint32_t put_task_into_certain_state(struct selfos_task_struct *pr_task,uint32_t flag);
 
-uint32_t __add_list_base_para(struct __link_list *pr_head,\
-							struct __link_list *pr_targe_link,uint32_t offset_strcut,\
-							uint32_t offset_proirity,uint8_t SmallToBig);
+void __add_list_base_para(struct __link_list * head_list,
+						struct __link_list * inser_list,
+						uint32_t list_offset,
+						uint32_t para_offset,uint8_t order);
 
-#define add_list_base_para(pr_head,pr_targe_link,offset_strcut, offset_proirity)		__add_list_base_para(pr_head,pr_targe_link,offset_strcut, offset_proirity,0)
+
+#define add_list_base_para(head_list,inser_list,list_offset, para_offset)		__add_list_base_para(head_list,inser_list,list_offset, para_offset,0)
 
 
 void TaskDelay(uint32_t dly);
