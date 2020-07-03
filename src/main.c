@@ -222,7 +222,7 @@ void taska(void)
 			*((uint8_t *)buf_a+i)=i+count;
 		}
 		count++;
-#if 0
+#if 1
 		pr_send=get_mem_from_pool(&smem_test,LEN_TASKA_MEM);
 		if(pr_send!=NULL)
 		{
@@ -247,7 +247,7 @@ void taskb(void)
 	TaskDelay(1000);	
     while (1) 
 	{
-#if 0
+#if 1
 		rc=get_dat_from_queue(&queue_taskb, &pr_rcv,3000, 0);
 		if(rc==os_true)
 		{
@@ -260,7 +260,7 @@ void taskb(void)
 		}	
 #else
 
-	TaskDelay(10000);
+	TaskDelay((uint32_t)(-1));
 
 #endif
 
@@ -276,7 +276,7 @@ void taskc(void)
     while (1) 
 	{
 		TaskDelay(200);
-#if 0
+#if 1
 		rc=sem_acquire(&sem_prevent_taskc,4000);
 		if(rc==os_true)
 		{
@@ -284,6 +284,7 @@ void taskc(void)
 		}
 #else
 		task_blink_blue();
+		TaskDelay((uint32_t)(-1));
 
 
 #endif

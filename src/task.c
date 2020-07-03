@@ -518,18 +518,16 @@ void get_next_TCB(void)
 		else if(gp_selfos_cur_task->state==OS_SUSPEND)
 		{
 			pr=gp_selfos_cur_task;
-			gp_selfos_cur_task=container_of(gp_selfos_cur_task->link.next,struct selfos_task_struct,link);
-
-
+			//gp_selfos_cur_task=container_of(gp_selfos_cur_task->link.next,struct selfos_task_struct,link);
 			if(pr->link.next==&(pr->link))	//已经是当前优先级的最后一个了
 			{
 				//从优先级链表删除当前优先级节点
 				
-				pr_tmp=container_of((gp_selfos_cur_task->proi_node_link),struct slefos_prio_struct,link);
+				pr_tmp=container_of((pr->proi_node_link),struct slefos_prio_struct,link);
 				
-				list_del(pr_tmp);
-				
+				list_del(&(((struct slefos_prio_struct *)pr_tmp)->link));
 				((struct slefos_prio_struct *)pr_tmp)->prio=NULL;
+				((struct slefos_prio_struct *)pr_tmp)->pr_task_list=NULL;
 			}
 			else
 			{
@@ -538,6 +536,9 @@ void get_next_TCB(void)
 
 			put_task_into_other_state(&spr_tail_spd_link,pr);
 			pr->proi_node_link=NULL;
+			
+			gp_selfos_cur_task=NULL;
+
 
 		}
 		else if(gp_selfos_cur_task->state==OS_RUN)
@@ -600,14 +601,20 @@ uint32_t put_task_into_other_state(struct __link_list **pr_tail,struct selfos_ta
 uint32_t put_task_into_run_state(struct selfos_task_struct *tcb)
 {
 	uint32_t i=0;
+
+	tcb->link.next=&(tcb->link);
+	tcb->link.pre=&(tcb->link);
+
+	
 	/*根据任务的优先级,选择合适的优先级的节点,放入其中*/
 	for(i=1;i<MAX_NUM_PRIORITY;i++)
 	{
 		if(tcb->priority==sos_prio_list[i].prio)
 		{
-			list_add_behind(&(sos_prio_list[i].pr_task_list->link),&(tcb->link));
+			list_add_behind(&(tcb->link),&(sos_prio_list[i].pr_task_list->link));
 			tcb->proi_node_link=&(sos_prio_list[i].link);
-			break;
+			tcb->state=OS_RUN;
+			return os_true;
 		}
 		else if(sos_prio_list[i].prio==0)	//需要插入一个新的优先级节点
 		{
@@ -623,15 +630,16 @@ uint32_t put_task_into_run_state(struct selfos_task_struct *tcb)
 								__offsetof(struct slefos_prio_struct,prio));
 			
 			tcb->proi_node_link=&(sos_prio_list[i].link);
+			tcb->state=OS_RUN;
 
-			break;
+			return os_true;
 
 		}
 
 	}
 
+	return os_false;
 
-	return os_true;
 }
 
 
