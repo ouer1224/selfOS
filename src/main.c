@@ -215,7 +215,7 @@ void taska(void)
 	}	
 	while (1) 
 	{
-		TaskDelay(1000);
+		TaskDelay(800);
 		task_blink_red();
 		for(i=0;i<LEN_TASKA_MEM;i++)
 		{

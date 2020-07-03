@@ -9,11 +9,12 @@
 #include "task.h"
 
 
+#if 1
 
-
-
-
-
+extern volatile struct selfos_task_struct taskA;
+extern volatile struct selfos_task_struct taskB;
+extern volatile struct selfos_task_struct taskC;
+#endif
 
 
 
@@ -146,8 +147,13 @@ void OS_relSpdTask(uint32_t source)
 			pr->wake_time=0xffffffff;
 			pr->spd_source=os_spd_init;
 			list_del(&(pr->link));
-	
+
+#if 0
 			list_add_before(&(pr->link),&(gp_selfos_cur_task->link));	
+#else
+			put_task_into_certain_state(pr, OS_RUN);
+#endif
+
 	
 			continue;
 		}
@@ -413,6 +419,17 @@ void get_next_TCB(void)
 				
 				if(pr->wake_time<=get_OS_sys_count())
 				{
+
+#if 1
+				if(pr==&taskA)
+				{
+					__asm volatile
+					(
+						"nop"
+					);
+				}
+				
+#endif
 					pr->state=OS_RUN;
 					pr->wake_time=0xffffffff;
 					list_del(&(pr->link));
@@ -493,6 +510,15 @@ void get_next_TCB(void)
 		if(gp_selfos_cur_task->state==OS_SLEEP)
 		{
 			pr=gp_selfos_cur_task;
+
+			if(pr==&taskA)
+			{
+				__asm volatile
+				(
+					"nop"
+				);
+			}
+			
 			//gp_selfos_cur_task=container_of(gp_selfos_cur_task->link.next,struct selfos_task_struct,link);
 			if(pr->link.next==&(pr->link))	//已经是当前优先级的最后一个了
 			{
@@ -601,10 +627,10 @@ uint32_t put_task_into_other_state(struct __link_list **pr_tail,struct selfos_ta
 uint32_t put_task_into_run_state(struct selfos_task_struct *tcb)
 {
 	uint32_t i=0;
-
+#if 0
 	tcb->link.next=&(tcb->link);
 	tcb->link.pre=&(tcb->link);
-
+#endif
 	
 	/*根据任务的优先级,选择合适的优先级的节点,放入其中*/
 	for(i=1;i<MAX_NUM_PRIORITY;i++)
