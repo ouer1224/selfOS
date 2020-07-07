@@ -28,20 +28,21 @@ extern void SysTick_Handler(void);
 
 #define TASKA_STK_SIZE 1024
 #define TASKB_STK_SIZE 1024
+#define TASKC_STK_SIZE 1024
 
 
 
+static unsigned int taskA_Stk[TASKA_STK_SIZE];
 static unsigned int taskB_Stk[TASKB_STK_SIZE];
-static unsigned int taskC_Stk[TASKB_STK_SIZE];
+static unsigned int taskC_Stk[TASKC_STK_SIZE];
 static unsigned int taskD_Stk[TASKB_STK_SIZE];
-static unsigned int taskE_Stk[TASKB_STK_SIZE];
 
 
 
 volatile unsigned int * gSCB_SHP14=(void *)0xE000ED22,*gSCB_ICSR=0xE000ED04;
 unsigned int gPENDSV_PRI=0xFF;
 
-uint32_t *pr_taskA=taskB_Stk+TASKA_STK_SIZE-1;
+//uint32_t *pr_taskA=taskB_Stk+TASKA_STK_SIZE-1;
 
 
 uint32_t count_sp=0;
@@ -275,7 +276,7 @@ void taskc(void)
 	TaskDelay(1500);	
     while (1) 
 	{
-		TaskDelay(200);
+		//TaskDelay(200);
 #if 1
 		rc=sem_acquire(&sem_prevent_taskc,4000);
 		if(rc==os_true)
@@ -311,9 +312,9 @@ int main(void)
 
 
 
-	selfos_create_task(&taskA, taska, &taskC_Stk[TASKA_STK_SIZE - 1],4);  
-	selfos_create_task(&taskB, taskb, &taskD_Stk[TASKA_STK_SIZE - 1],1);  
-	selfos_create_task(&taskC, taskc, &taskE_Stk[TASKA_STK_SIZE - 1],3);
+	selfos_create_task(&taskA, taska, &taskA_Stk[TASKA_STK_SIZE - 1],1);  
+	selfos_create_task(&taskB, taskb, &taskB_Stk[TASKB_STK_SIZE - 1],2);  
+	selfos_create_task(&taskC, taskc, &taskC_Stk[TASKC_STK_SIZE - 1],3);
 
 
 	/*创建队列*/
