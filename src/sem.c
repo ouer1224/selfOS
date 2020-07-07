@@ -103,6 +103,13 @@ uint32_t sem_acquire(SemCB *pr,uint32_t delay)
 				gp_selfos_cur_task->spd_source=os_spd_init;
 				rc=os_false;
 			}
+			else
+			{
+				input_critical_area();
+				rc=__sem_acquire(pr);
+				exit_critical_area();
+
+			}
 		}
 
 
@@ -132,6 +139,10 @@ void sem_release(SemCB *pr)
 	{
 		;
 	}
+
+	need_rel=1;
+
+	
 	if(need_rel==1)
 	{
 		OS_relSpdTask((uint32_t)pr);
