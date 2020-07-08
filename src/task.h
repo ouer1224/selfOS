@@ -112,6 +112,16 @@ void __add_list_base_para(struct __link_list * head_list,
 
 void TaskDelay(uint32_t dly);
 
+
+uint8_t checkInAppOrInterr(void);
+void __input_critical_area(void);
+void __exit_critical_area(void);
+
+#define close_all_interruct() 	do{__asm volatile ("cpsid i" : : : "memory");}while(0)
+#define open_all_interruct() 	do{__asm volatile ("cpsie i" : : : "memory");}while(0)
+
+
+
 #endif
 
 

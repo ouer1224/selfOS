@@ -75,6 +75,7 @@ QueueCB queue_taskb;
 SemCB sem_prevent_taskc;
 
 
+extern uint8_t checkInAppOrInterr(void);
 
 
 
@@ -183,20 +184,97 @@ void FTM3_init_40MHZ(void)
 }
 
 
+/*FTM2作为系统时钟中断*/
+void FTM2_init_40MHZ(void)
+{
+		//此处使用的是sys_clock,80M.
+	PCC->PCCn[PCC_FTM2_INDEX] &= ~PCC_PCCn_CGC_MASK; //禁止FTM2时钟
+	PCC->PCCn[PCC_FTM2_INDEX] |= PCC_PCCn_PCS(0) | PCC_PCCn_CGC_MASK;//选择了系统时钟80M,不使用外部时钟
+
+	FTM2->MODE |= FTM_MODE_WPDIS_MASK; //写保护禁用
+	FTM2->MODE |= FTM_MODE_FTMEN_MASK; //FTM使能 开始写寄存器
+	FTM2->SC = 0;//清除状态寄存器
+	FTM2->SC |= FTM_SC_TOIE_MASK | FTM_SC_PS(0b111);//  计数器溢出中断 分频因子选择 111b Divide by 128
+	FTM2->SC &= ~FTM_SC_TOF_MASK;//清除计数器溢出标志
+
+	FTM2->COMBINE = 0x00000000;//DECAPENx, MCOMBINEx, COMBINEx=0
+	FTM2->POL = 0x00000000; //设置通道输出的极性
+	FTM2->CNTIN = 0;
+	FTM2->MOD = 6-1;//2560 - 1; //设置计数器终止值 配置中断时间  1000ms
+	/* FTM2 Period = MOD-CNTIN+0x0001 ~= 2 ctr clks  */
+
+	FTM2->SC |= FTM_SC_CLKS(FTM_IN_CLOCK);//选择时钟源
+
+	pr_NVIC_ISER[116/32]=0x01<<(116u%32);
+}
+
+
+
 void HardFault_Handler(void)
 {
 	static char conti=1;
 	while(conti);
 }
 
+volatile static uint32_t count_timer3=0;
+volatile static uint32_t count_timer2=0;
 
 void FTM3_Ovf_Reload_IRQHandler (void)
 {
 	FTM3->SC &= ~FTM_SC_TOF_MASK; //清除中断标志
-	
+	count_timer3=FTM2->CNT;
+
+	count_timer2=checkInAppOrInterr();
+
 	Sys_readyToSwitch();
 
 }
+void FTM2_Ovf_Reload_IRQHandler (void)
+{
+	FTM2->SC &= ~FTM_SC_TOF_MASK; //清除中断标志
+
+	if(gp_selfos_cur_task==&taskA)
+	{
+		recode_taska_runtime('a');
+	}
+	else if(gp_selfos_cur_task==&taskB)
+	{
+		recode_taska_runtime('b');
+	
+	}
+	else if(gp_selfos_cur_task==&taskC)
+	{
+		recode_taska_runtime('c');
+	
+	}
+	
+}
+
+
+
+volatile static uint32_t s_counta=1,s_countb=1,s_countc=1;
+volatile static uint32_t s_vala=0,s_valb=0,s_valc=0;
+
+void recode_taska_runtime(uint8_t dat)
+{
+	if((dat=='A')||(dat=='a'))
+	{
+		s_vala++;
+	}
+	else if((dat=='B')||(dat=='b'))
+	{
+		s_valb++;
+
+	}
+	else if((dat=='C')||(dat=='c'))
+	{
+		s_valc++;
+	}
+
+}
+
+
+
 
 
 
@@ -207,15 +285,18 @@ void taska(void)
 	uint32_t i=0;
 	uint8_t buf_a[LEN_TASKA_MEM+4];
 	uint8_t *pr_send=NULL;
-	TaskDelay(500);
-
+	//TaskDelay(500);
+#if 1
 	rc=creat_mem_pool(&smem_test,buf_mem,LEN_TASKA_MEM,DEEP_TASKA_MEM);
 	if(rc!=os_true)
 	{
 		while(1);
-	}	
+	}
+#endif	
 	while (1) 
 	{
+
+#if 1	
 		TaskDelay(800);
 		task_blink_red();
 		for(i=0;i<LEN_TASKA_MEM;i++)
@@ -223,7 +304,7 @@ void taska(void)
 			*((uint8_t *)buf_a+i)=i+count;
 		}
 		count++;
-#if 1
+
 		pr_send=get_mem_from_pool(&smem_test,LEN_TASKA_MEM);
 		if(pr_send!=NULL)
 		{
@@ -234,8 +315,17 @@ void taska(void)
 				;
 			}
 		}
-#endif
+#else
 
+		s_counta++;
+		s_countb=0;
+		s_countc=0;
+
+		rc=checkInAppOrInterr();
+
+		
+
+#endif
 	}
 
 }
@@ -245,7 +335,7 @@ void taskb(void)
 	uint8_t buf_b[24];
 	uint32_t rc=0;
 	uint8_t *pr_rcv=NULL;
-	TaskDelay(1000);	
+	//TaskDelay(1000);	
     while (1) 
 	{
 #if 1
@@ -261,7 +351,9 @@ void taskb(void)
 		}	
 #else
 
-	TaskDelay((uint32_t)(-1));
+		s_counta=0;
+		s_countb++;
+		s_countc=0;
 
 #endif
 
@@ -273,7 +365,7 @@ void taskc(void)
 
 	uint32_t rc=0;
 
-	TaskDelay(1500);	
+	//TaskDelay(1500);	
     while (1) 
 	{
 		//TaskDelay(200);
@@ -284,9 +376,10 @@ void taskc(void)
 			task_blink_blue();
 		}
 #else
-		task_blink_blue();
-		TaskDelay((uint32_t)(-1));
 
+		s_counta=0;
+		s_countb=0;
+		s_countc++;
 
 #endif
 
@@ -308,13 +401,14 @@ int main(void)
 	SPLL_init_160MHz();     /* Initialize SPLL to 160 MHz with 8 MHz SOSC */
 	NormalRUNmode_80MHz();  /* Init clocks: 80 MHz sysclk & core, 40 MHz bus, 20 MHz flash */
 	FTM3_init_40MHZ();
+	FTM2_init_40MHZ();
 	PORT_init();             /* Configure ports */
 
 
 
 	selfos_create_task(&taskA, taska, &taskA_Stk[TASKA_STK_SIZE - 1],1);  
-	selfos_create_task(&taskB, taskb, &taskB_Stk[TASKB_STK_SIZE - 1],2);  
-	selfos_create_task(&taskC, taskc, &taskC_Stk[TASKC_STK_SIZE - 1],3);
+	selfos_create_task(&taskB, taskb, &taskB_Stk[TASKB_STK_SIZE - 1],1);  
+	selfos_create_task(&taskC, taskc, &taskC_Stk[TASKC_STK_SIZE - 1],1);
 
 
 	/*创建队列*/
@@ -327,8 +421,9 @@ int main(void)
 
 
 
-  ENABLE_INTERRUPTS();
-  selfos_start();
+  	ENABLE_INTERRUPTS();
+  	
+ 	selfos_start();
 
 
   int i=0;

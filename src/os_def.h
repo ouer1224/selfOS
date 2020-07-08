@@ -22,11 +22,11 @@
 #define __setnbit_array(array,N)			(((uint8_t *)array)[(N)/8]|=((0x01<<(N%8))))
 
 
-#define close_all_interruct() 	do{__asm volatile ("cpsid i" : : : "memory");}while(0)
-#define open_all_interruct() 	do{__asm volatile ("cpsie i" : : : "memory");}while(0)
+//#define close_all_interruct() 	do{__asm volatile ("cpsid i" : : : "memory");}while(0)
+//#define open_all_interruct() 	do{__asm volatile ("cpsie i" : : : "memory");}while(0)
 
-#define input_critical_area()		close_all_interruct()
-#define exit_critical_area()		open_all_interruct()
+#define input_critical_area()		__input_critical_area()//do{	if(checkInAppOrInterr()==1){ close_all_interruct();}else{while(1);} }while(0)
+#define exit_critical_area()		__exit_critical_area()//do{	if(checkInAppOrInterr()==1){ open_all_interruct();}else{while(1);} }while(0)
 
 
 #endif

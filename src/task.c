@@ -77,6 +77,7 @@ static unsigned int task_idle_Stk[SIZE_STACK_TASK_IDLE];
 
 
 
+extern void recode_taska_runtime(uint8_t dat);
 
 
 
@@ -204,7 +205,7 @@ void taskidle(void)
 
 }
 
-
+static uint8_t s_OSHaveNoStart=1;
 
 void selfos_start (void)
 {
@@ -212,6 +213,8 @@ void selfos_start (void)
 	//添加idle任务
 	OS__selfos_create_task(&task_idle,taskidle,&task_idle_Stk[SIZE_STACK_TASK_IDLE - 1],255);
 
+
+	s_OSHaveNoStart=0;
 #if 0		//systick
 	SCB_SHPR3=0xff<<16;
 
@@ -500,6 +503,9 @@ void get_next_TCB(void)
 
 	/*在将sleep和suspend的任务处理完毕,将run链表进行重新排序后,在进行run的轮训*/
 
+
+
+
 	do
 	{
 		if(gp_selfos_cur_task==NULL)
@@ -532,6 +538,12 @@ void get_next_TCB(void)
 			}
 			else
 			{
+			
+				pr_link=gp_selfos_cur_task->proi_node_link;
+				pr_tmp=container_of((pr_link),struct slefos_prio_struct,link);
+				
+				((struct slefos_prio_struct *)pr_tmp)->pr_task_list=container_of((gp_selfos_cur_task->link.next),struct selfos_task_struct,link);
+
 				list_del(&(pr->link));	
 			}
 			
@@ -557,6 +569,12 @@ void get_next_TCB(void)
 			}
 			else
 			{
+
+				pr_link=gp_selfos_cur_task->proi_node_link;
+				pr_tmp=container_of((pr_link),struct slefos_prio_struct,link);
+				
+				((struct slefos_prio_struct *)pr_tmp)->pr_task_list=container_of((gp_selfos_cur_task->link.next),struct selfos_task_struct,link);
+			
 				list_del(&(pr->link));	
 			}
 
@@ -802,6 +820,62 @@ void __add_list_base_para(struct __link_list * head_list,
 		while(1);	
 	}	
 }
+
+
+static uint32_t s_stateControl=0;
+uint8_t checkInAppOrInterr(void)
+{
+	__asm volatile
+	(
+		"mrs r0,control \n"
+		"mov %0,r0\n"
+		:"+r"(s_stateControl)
+	);
+
+	return ((s_stateControl&0x02)==0x02);
+
+}
+
+static uint32_t s_criticalNest=0;
+void __input_critical_area(void)
+{
+	static uint8_t con=1;
+	s_criticalNest++;
+	if(s_criticalNest!=1)
+	{
+		while(con);
+	}
+
+	if((checkInAppOrInterr()==1)||(s_OSHaveNoStart))
+	{ 
+		close_all_interruct();
+	}
+	else
+	{
+		while(con);
+	} 
+
+}
+
+void __exit_critical_area(void)
+{
+	static uint8_t con=1;
+	s_criticalNest--;
+	if(s_criticalNest!=0)
+	{
+		while(con);
+	}
+
+	if((checkInAppOrInterr()==1)||(s_OSHaveNoStart))
+	{ 
+		open_all_interruct();
+	}
+	else
+	{
+		while(con);
+	} 
+}
+
 
 
 
