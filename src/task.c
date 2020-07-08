@@ -336,7 +336,7 @@ uint32_t OS__selfos_create_task(struct selfos_task_struct * tcb, selfos_task tas
 	{
 		if(tcb->priority==sos_prio_list[i].prio)
 		{
-			list_add_behind(&(sos_prio_list[i].pr_task_list->link),&(tcb->link));
+			list_add_before(&(tcb->link),&(sos_prio_list[i].pr_task_list->link));
 			tcb->proi_node_link=&(sos_prio_list[i].link);
 			i=0;
 			break;
