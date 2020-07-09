@@ -67,13 +67,24 @@ int list_add_before(link_list *new_list,link_list *current)
 /*删除当前节点*/
 int list_del(link_list *current)
 {
+	if((current->pre==NULL)||(current->next==NULL))
+	{
+		return os_false;
+	}
+
+	if((current->pre==current)||(current->next==current))
+	{
+		return os_false;
+	}
+
+	
 	current->pre->next=current->next;
 	current->next->pre=current->pre;
 
-	current->pre=NULL;
-	current->next=NULL;
+	current->pre=current;/*自回环*/
+	current->next=current;
 
-	return 0;
+	return os_true;
 }
 #if 1
 /*
